@@ -6,9 +6,9 @@ Marko Purić - R2 38/2021
 * GUI created with **Python** and **tkinter**.
 # Main idea
 <div style="display: flex; justify-content: space-between;">
-    <img src="Readme/python.png" width="150" height="150">
-    <img src="Readme/textX.png" width="200" height="100" style="align-self: center;">
-    <img src="Readme/jinja.png">
+    <img src="readme_assets/python.png" width="150" height="150">
+    <img src="readme_assets/textX.png" width="200" height="100" style="align-self: center;">
+    <img src="readme_assets/jinja.png">
 </div>
 
 Main idea for this project is to create domain specific language with TextX and Python which will speed up the process of creating and generating code (classes - more specific under [**Functionalities**](#Functionalities)).
