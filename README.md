@@ -5,9 +5,11 @@ Marko Purić - R2 38/2021
 * DSL language created with **TextX**.
 * GUI created with **Python** and **tkinter**.
 # Main idea
-![image](https://github.com/markobanja/python-DSL/assets/18674783/67c08a85-15e0-48b6-b1f3-86b27882b436)
-![image](https://github.com/markobanja/python-DSL/assets/18674783/343f5e5e-d02b-4ad3-a35e-cf3c2d727346)
-![image](https://github.com/markobanja/python-DSL/assets/18674783/df294649-3e21-4be2-894c-7c55f589d5ea)
+<div style="display: flex; justify-content: space-between;">
+    <img src="readme_assets/python.png" width="150" height="150">
+    <img src="readme_assets/textX.png" width="200" height="100" style="align-self: center;">
+    <img src="readme_assets/jinja.png">
+</div>
 
 Main idea for this project is to create domain specific language with TextX and Python which will speed up the process of creating and generating code (classes - more specific under [**Functionalities**](#Functionalities)).
 User just need to learn syntax (help window will be created inside GUI). Syntax is more human oriented and it will make life easier for developers.
