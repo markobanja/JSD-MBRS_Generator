@@ -5,6 +5,7 @@ import error_handler as eh
 import grammar_classes as gc
 from textx import metamodel_from_file
 
+
 def get_metamodel(grammar_path):
     """
     Get the metamodel from the given grammar file path.
@@ -50,5 +51,5 @@ def test_run():
 
     entity_metamodel = get_metamodel(utils.get_path(cfg.GRAMMAR_FOLDER, cfg.GRAMMAR_FILE))
     entity_model = get_model(entity_metamodel, utils.get_path(cfg.GRAMMAR_FOLDER, cfg.GRAMMAR_INPUT_FILE))
-    print(*[entity.name for entity in entity_model.entities], sep=', ')
     logging.info('Test run finished')
+    return entity_model
