@@ -1,6 +1,7 @@
 import logging
 import logging.config
 
+
 # Define the logging configuration
 log_config = {
     "version": 1,
@@ -28,7 +29,6 @@ log_config = {
         "level": "INFO",
     },
 }
-
 
 def setup_logging():
     """
