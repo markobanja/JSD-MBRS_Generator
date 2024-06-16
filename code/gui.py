@@ -3,12 +3,14 @@ import logging
 import config as cfg
 import tkinter as tk
 import textx_grammar as tg
-from tkinter import ttk, scrolledtext
 from ttkthemes import ThemedStyle
+from tkinter import ttk, scrolledtext, filedialog
 
 
-BACKGROUND_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['background'])
+INITIAL_BACKGROUND_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['initial_background'])
+WORKING_BACKGROUND_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['working_background'])
 INFORMATION_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['information'])
+WARNING_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['warning'])
 
 
 def position_window(window, width, height):
@@ -77,13 +79,17 @@ class MainWindowGUI:
         Initialize the toolbar with a generate button.
         """
         toolbar = ttk.Frame(self.window)
-        self.generate_button = ttk.Button(toolbar, text='Generate', command=self.generate_action, compound=tk.TOP, style='Toolbar.TButton', state=tk.NORMAL)
+        self.open_button = ttk.Button(toolbar, text='Open Project', command=self.open_project, compound=tk.TOP, style='Toolbar.TButton')
+        self.generate_button = ttk.Button(toolbar, text='Generate', command=self.generate_action, compound=tk.TOP, style='Toolbar.TButton', state=tk.DISABLED)        
         self.help_button = ttk.Button(toolbar, text='Help', command=self.help_action, compound=tk.TOP, style='Toolbar.TButton')
 
-        self.generate_button.grid(row=0, column=0, padx=5)
+        # Place the buttons in the toolbar
+        self.open_button.grid(row=0, column=0, padx=5)
+        self.generate_button.grid(row=0, column=1, padx=5)
         self.help_button.grid(row=0, column=5, padx=5)
 
-        toolbar.columnconfigure(1, weight=1)
+        # Configure the toolbar
+        toolbar.columnconfigure(2, weight=1)
         toolbar.grid(row=0, column=0, columnspan=6, sticky='ew', pady=5)
         logging.info('Toolbar initialized')
 
@@ -91,7 +97,7 @@ class MainWindowGUI:
         """
         Initialize line number text widget.
         """
-        self.line_number_text = tk.Text(self.window, font=self.input_text_font, width=3, padx=5, wrap=tk.NONE, state=tk.DISABLED, cursor='arrow', background=BACKGROUND_COLOR)
+        self.line_number_text = tk.Text(self.window, font=self.input_text_font, width=3, padx=5, wrap=tk.NONE, state=tk.DISABLED, cursor='arrow', background=INITIAL_BACKGROUND_COLOR)
         self.line_number_text.grid(row=1, column=0, padx=5, pady=5, sticky='nsw')
         self.line_number_text.bind('<Key>', lambda event: 'break')
         self.line_number_text.bind('<MouseWheel>', lambda event: 'break')
@@ -103,7 +109,7 @@ class MainWindowGUI:
         """
         Initialize the text editor widget.
         """
-        self.text_editor = tk.Text(self.window, wrap=tk.WORD, font=self.input_text_font, height=30, width=80, undo=True, maxundo=-1, state=tk.NORMAL, background=BACKGROUND_COLOR)
+        self.text_editor = tk.Text(self.window, wrap=tk.WORD, font=self.input_text_font, height=30, width=80, undo=True, maxundo=-1, state=tk.DISABLED, cursor='arrow', background=INITIAL_BACKGROUND_COLOR)
         self.text_editor.grid(row=1, column=1, padx=10, pady=5, columnspan=2, sticky='nsew')
         self.text_editor.bind('<KeyRelease>', self.type_text)
         logging.info('Text editor widget initialized')
@@ -129,6 +135,31 @@ class MainWindowGUI:
         self.window.rowconfigure(2, weight=1)
         logging.info('Main window weights set')
 
+    def open_project(self):
+        """
+        Opens a folder and checks if it is a valid Spring Boot application.
+        If it is, sets the working state otherwise sets the initial state.
+        """
+        logging.info('Opening project folder')
+        project_path = filedialog.askdirectory()
+        if not project_path:
+            logging.warning('No project path selected')
+            return
+
+        project_name = utils.get_base_name(project_path)
+        logging.info(f'Checking if folder "{project_path}" is a valid Spring Boot application')
+        build_tool, is_spring_boot = utils.is_spring_boot_application(project_path)
+        if not is_spring_boot:
+            self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["WARN"]} The selected folder "{project_name}" is not a valid Spring Boot application!', fg=WARNING_COLOR)
+            self.initial_state()
+            logging.warning('Folder is not a valid Spring Boot application')
+            return
+
+        self.working_state()
+        self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} The selected folder "{project_name}" is a valid {build_tool} Spring Boot application.', fg=INFORMATION_COLOR)
+        self.text_editor.insert(tk.INSERT, 'Hello World!')
+        logging.info('Folder is a valid Spring Boot application')
+
     def generate_action(self):
         """
         Get the names of all entities in the entity model and insert them into the text editor.
@@ -149,6 +180,24 @@ class MainWindowGUI:
         else:
             logging.info('Bringing existing HelpWindowGUI instance to the front')
             self.help_window_instance.lift()
+
+    def initial_state(self):
+        """
+        Set the initial state of the main window.
+        """
+        self.generate_button.config(state=tk.DISABLED)
+        self.text_editor.delete('1.0', tk.END)
+        self.text_editor.config(state=tk.DISABLED, cursor='arrow', background=INITIAL_BACKGROUND_COLOR)
+        logging.info('Main window initial state set')
+
+    def working_state(self):
+        """
+        Set the working state of the main window.
+        """
+        self.generate_button.config(state=tk.NORMAL)
+        self.text_editor.delete('1.0', tk.END)
+        self.text_editor.config(state=tk.NORMAL, cursor='ibeam', background=WORKING_BACKGROUND_COLOR)
+        logging.info('Main window working state set')
 
     def update_line_numbers(self, event=None):
         """
@@ -223,7 +272,7 @@ class HelpWindowGUI(tk.Toplevel):
         """
         Initialize the help text widget.
         """
-        self.help_text_widget = scrolledtext.ScrolledText(self.help_window, wrap=tk.WORD, font=self.help_window_font, background=BACKGROUND_COLOR)
+        self.help_text_widget = scrolledtext.ScrolledText(self.help_window, wrap=tk.WORD, font=self.help_window_font, background=INITIAL_BACKGROUND_COLOR)
         self.help_text_widget.pack(padx=10, pady=10)
         logging.info('Text widget initialized')
 
