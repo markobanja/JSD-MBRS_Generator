@@ -1,16 +1,16 @@
 import logging
 import error_handler as eh
-from gui import GUI
+from gui import MainWindowGUI
 from logging_config import setup_logging
 
 
 def launch():
     """
-    Function to launch the GUI.
+    Function to launch the MainWindowGUI.
     """
     try:
-        logging.info('Launching GUI')
-        gui = GUI()
+        logging.info('Launching MainWindowGUI')
+        gui = MainWindowGUI()
         gui.run()
     except (eh.MetamodelCreationError, eh.ModelCreationError, FileNotFoundError) as e:
         raise
