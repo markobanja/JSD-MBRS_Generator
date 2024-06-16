@@ -39,3 +39,11 @@ def convert_rgb_to_hex(rgb_value):
     hex_value = '#%02x%02x%02x' % rgb_value # Convert the RGB values to a hexadecimal color code
     logging.debug(f'Converting RGB values ({red}, {green}, {blue}) to hex: {hex_value}')
     return hex_value
+
+def read_file(file_path, encoding='utf-8'):
+    """
+    Reads the contents of a file.
+    """
+    with open(file_path, mode='r', encoding=encoding) as file:
+        content = file.read()
+    return content

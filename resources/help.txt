@@ -1,0 +1,1 @@
+This file will be updated with the description about JSD-MBRS Generator documentation and a simple grammar syntax as an example.
