@@ -7,10 +7,12 @@ from ttkthemes import ThemedStyle
 from tkinter import ttk, scrolledtext, filedialog
 
 
+OK_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['ok'])
 INITIAL_BACKGROUND_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['initial_background'])
 WORKING_BACKGROUND_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['working_background'])
 INFORMATION_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['information'])
 WARNING_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['warning'])
+ERROR_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['error'])
 
 
 def position_window(window, width, height):
@@ -36,8 +38,11 @@ class MainWindowGUI:
         """
         logging.info('Creating MainWindowGUI instance')
         self.help_window_instance = None  # To track the instance of the help window
+        self.metamodel = None
+        self.model = None
+        self.project_path = None
+        self.project_name = None
         self.init_window()
-        self.entity_model = tg.test_run()
 
     def init_window(self):
         """
@@ -65,7 +70,7 @@ class MainWindowGUI:
 
     def init_window_components(self):
         """
-        Initializes the window components of the main window.
+        Initializes the components of the main window.
         """
         logging.info('Initializing main window components')
         self.init_toolbar()
@@ -81,15 +86,17 @@ class MainWindowGUI:
         toolbar = ttk.Frame(self.window)
         self.open_button = ttk.Button(toolbar, text='Open Project', command=self.open_project, compound=tk.TOP, style='Toolbar.TButton')
         self.generate_button = ttk.Button(toolbar, text='Generate', command=self.generate_action, compound=tk.TOP, style='Toolbar.TButton', state=tk.DISABLED)        
+        self.export_button = ttk.Button(toolbar, text='Export', command=self.export_action, compound=tk.TOP, style='Toolbar.TButton', state=tk.DISABLED)
         self.help_button = ttk.Button(toolbar, text='Help', command=self.help_action, compound=tk.TOP, style='Toolbar.TButton')
 
         # Place the buttons in the toolbar
         self.open_button.grid(row=0, column=0, padx=5)
         self.generate_button.grid(row=0, column=1, padx=5)
+        self.export_button.grid(row=0, column=2, padx=5)
         self.help_button.grid(row=0, column=5, padx=5)
 
         # Configure the toolbar
-        toolbar.columnconfigure(2, weight=1)
+        toolbar.columnconfigure(3, weight=1)
         toolbar.grid(row=0, column=0, columnspan=6, sticky='ew', pady=5)
         logging.info('Toolbar initialized')
 
@@ -141,51 +148,88 @@ class MainWindowGUI:
         If it is, sets the working state otherwise sets the initial state.
         """
         logging.info('Opening project folder')
-        project_path = filedialog.askdirectory()
-        if not project_path:
+        self.project_path = filedialog.askdirectory()
+        if not self.project_path:
             logging.warning('No project path selected')
             return
 
-        project_name = utils.get_base_name(project_path)
-        logging.info(f'Checking if folder "{project_path}" is a valid Spring Boot application')
-        build_tool, is_spring_boot = utils.is_spring_boot_application(project_path)
+        self.project_name = utils.get_base_name(self.project_path)
+        logging.info(f'Checking if folder "{self.project_path}" is a valid Spring Boot application')
+        build_tool, is_spring_boot = utils.is_spring_boot_application(self.project_path)
         if not is_spring_boot:
-            self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["WARN"]} The selected folder "{project_name}" is not a valid Spring Boot application!', fg=WARNING_COLOR)
+            self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["WARN"]} The selected folder "{self.project_name}" is not a valid Spring Boot application!', fg=WARNING_COLOR)
             self.initial_state()
             logging.warning('Folder is not a valid Spring Boot application')
             return
 
         self.working_state()
-        self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} The selected folder "{project_name}" is a valid {build_tool} Spring Boot application.', fg=INFORMATION_COLOR)
+        self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} The selected folder "{self.project_name}" is a valid {build_tool} Spring Boot application.', fg=INFORMATION_COLOR)
         self.text_editor.insert(tk.INSERT, 'Hello World!')
         logging.info('Folder is a valid Spring Boot application')
 
     def generate_action(self):
         """
-        Get the names of all entities in the entity model and insert them into the text editor.
+        Get the names of all entities in the model and insert them into the text editor.
         """
-        logging.info('Getting entity names')
-        entities = ', '.join([f'"{entity.name}"' for entity in self.entity_model.entities])
-        self.text_editor.delete('1.0', tk.END)
-        self.text_editor.insert(tk.INSERT, entities)
-        logging.info('Entity names retrieved and inserted into the text editor')
+        try:
+            logging.info('Getting entity names')
+            self.metamodel, self.model = tg.test_run()
+            entities = ', '.join([f'"{entity.name}"' for entity in self.model.entities])
+            self.text_editor.delete('1.0', tk.END)
+            self.text_editor.insert(tk.INSERT, entities)
+            self.export_button.config(state=tk.NORMAL)
+            logging.info('Entity names retrieved and inserted into the text editor')
+        except Exception as e:
+            error_message = f'Failed to get entity names: {str(e)}'
+            logging.error(error_message)
+            self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(error_message)}', fg=ERROR_COLOR)
+    
+    def export_action(self):
+        """
+        Export the metamodel and model files to the project export folder.
+        """
+        export_folder = utils.get_path(cfg.JSD_MBRS_GENERATOR_FOLDER, cfg.EXPORT_FOLDER)
+        logging.info(f'Starting to export metamodel and model files to the "{export_folder}" folder')
+        self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} Exporting, please wait...', fg=INFORMATION_COLOR)
+        self.window.update_idletasks()
 
+        # Export the metamodel and model to the project folder
+        response = tg.export(self.metamodel, self.model, self.project_path)
+        if response is cfg.OK:
+            response_color = OK_COLOR
+            response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["OK"]} Successfully exported files to the "{export_folder}" folder.'
+        elif response is cfg.WARNING:
+            response_color = WARNING_COLOR
+            response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["WARN"]} Files exported with warnings to the "{export_folder}" folder.'
+        else:
+            response_color = ERROR_COLOR
+            response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(response)}'
+
+        # Update the console output
+        self.console_output.config(text=response_text, fg=response_color)
+    
     def help_action(self):
         """
         Function to open the help window.
         """
-        if self.help_window_instance is None or not self.help_window_instance.winfo_exists():
-            logging.info('Creating new HelpWindowGUI instance')
-            self.help_window_instance = HelpWindowGUI(self)
-        else:
-            logging.info('Bringing existing HelpWindowGUI instance to the front')
-            self.help_window_instance.lift()
+        try:
+            if self.help_window_instance is None or not self.help_window_instance.winfo_exists():
+                logging.info('Creating new HelpWindowGUI instance')
+                self.help_window_instance = HelpWindowGUI(self)
+            else:
+                logging.info('Bringing existing HelpWindowGUI instance to the front')
+                self.help_window_instance.lift()
+        except Exception as e:
+            error_message = f'Failed to open help window: {str(e)}'
+            logging.error(error_message)
+            self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {error_message}', fg=ERROR_COLOR)
 
     def initial_state(self):
         """
         Set the initial state of the main window.
         """
         self.generate_button.config(state=tk.DISABLED)
+        self.export_button.config(state=tk.DISABLED)
         self.text_editor.delete('1.0', tk.END)
         self.text_editor.config(state=tk.DISABLED, cursor='arrow', background=INITIAL_BACKGROUND_COLOR)
         logging.info('Main window initial state set')
@@ -195,6 +239,7 @@ class MainWindowGUI:
         Set the working state of the main window.
         """
         self.generate_button.config(state=tk.NORMAL)
+        self.export_button.config(state=tk.DISABLED)
         self.text_editor.delete('1.0', tk.END)
         self.text_editor.config(state=tk.NORMAL, cursor='ibeam', background=WORKING_BACKGROUND_COLOR)
         logging.info('Main window working state set')
@@ -243,8 +288,8 @@ class HelpWindowGUI(tk.Toplevel):
         """
         logging.info('Creating HelpWindowGUI instance')
         self.parent = parent
+        self.help_text = self.read_help_file()
         self.init_window()
-        self.read_help_file()
 
     def init_window(self):
         """
@@ -260,39 +305,39 @@ class HelpWindowGUI(tk.Toplevel):
         self.help_window.focus_set()
         self.help_window.grab_set()
         self.init_window_components()
+        self.update_help_scrolled_text_widget()
 
     def init_window_components(self):
         """
-        Initializes the window components of the help window.
+        Initializes the components of the help window.
         """
         logging.info('Initializing help window components')
-        self.init_help_text_widget()
+        self.init_help_scrolled_text()
 
-    def init_help_text_widget(self):
+    def init_help_scrolled_text(self):
         """
-        Initialize the help text widget.
+        Initialize the help scrolled text widget.
         """
-        self.help_text_widget = scrolledtext.ScrolledText(self.help_window, wrap=tk.WORD, font=self.help_window_font, background=INITIAL_BACKGROUND_COLOR)
-        self.help_text_widget.pack(padx=10, pady=10)
-        logging.info('Text widget initialized')
+        self.help_scrolled_text = scrolledtext.ScrolledText(self.help_window, wrap=tk.WORD, font=self.help_window_font, background=INITIAL_BACKGROUND_COLOR)
+        self.help_scrolled_text.pack(padx=10, pady=10)
+        logging.info('Scrolled text widget initialized')
 
     def read_help_file(self):
         """
-        Reads the content of the help file and inserts it into the help text widget.
+        Reads the content of the help file located in the resources folder and returns it as a string.
         """
-        if not utils.folder_exists(cfg.RESOURCES_FOLDER):
-            logging.error(f'The "{cfg.RESOURCES_FOLDER}" folder does not exist in the current directory!')
-            raise FileNotFoundError
-
-        if not utils.file_exists(cfg.RESOURCES_FOLDER, cfg.HELP_FILE):
-            logging.error(f'The "{cfg.HELP_FILE}" file does not exist in the "{cfg.RESOURCES_FOLDER}" folder!')
-            raise FileNotFoundError
-
+        utils.folder_exists(cfg.RESOURCES_FOLDER)
+        utils.file_exists(cfg.RESOURCES_FOLDER, cfg.HELP_FILE)
         logging.info(f'Reading "{cfg.HELP_FILE}" file')
-        help_text = utils.read_file(utils.get_path(cfg.RESOURCES_FOLDER, cfg.HELP_FILE))
-        self.help_text_widget.insert('1.0', help_text)
-        self.help_text_widget.config(state=tk.DISABLED)
-        logging.info(f'Content of the "{cfg.HELP_FILE}" file read and inserted into the text widget')
+        return utils.read_file(utils.get_path(cfg.RESOURCES_FOLDER, cfg.HELP_FILE))
+
+    def update_help_scrolled_text_widget(self):
+        """
+        Updates the help scrolled text widget with the content of the help file.
+        """
+        self.help_scrolled_text.insert('1.0', self.help_text)
+        self.help_scrolled_text.config(state=tk.DISABLED)
+        logging.info(f'Content of "{cfg.HELP_FILE}" file loaded into scrolled text widget')
 
     def on_help_window_close(self, help_window):
         """

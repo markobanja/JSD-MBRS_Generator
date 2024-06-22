@@ -7,10 +7,13 @@ COLORS = {
     'working_background': (255, 255, 255),
 
     # Text colors
+    'ok': (27, 152, 81),
     'information': (52, 152, 219),
     'warning': (255, 102, 34),
+    'error': (204, 0, 0),
 }
 CONSOLE_LOG_LEVEL_TAGS  = {
+    'OK': '[OK]',
     'INFO': '[INFO]',
     'WARN': '[WARNING]',
     'ERROR': '[ERROR]',
@@ -26,11 +29,28 @@ HELP_WINDOW_WIDTH = 750
 HELP_WINDOW_HEIGHT = 400
 
 # TEXTX GRAMMAR
+# Folders
+JSD_MBRS_GENERATOR_FOLDER = 'jsd-mbrs-generator'
 GRAMMAR_FOLDER = 'grammar'
+RESOURCES_FOLDER = 'resources'
+EXPORT_FOLDER = 'export'
+EXPORT_DOT_FOLDER = 'dot'
+EXPORT_PLANTUML_FOLDER = 'plantuml'
+# Files
 GRAMMAR_FILE = 'jsd-mbrs-generator-grammar.tx'
 GRAMMAR_INPUT_FILE = 'test_input.jsdmbrs'
-RESOURCES_FOLDER = 'resources'
 HELP_FILE = 'help.txt'
+# Other
+OK = 'OK'
+WARNING = 'WARNING'
+DOT_FILE_EXTENSION = '.dot'
+PLANTUML_FILE_EXTENSION = '.pu'
+PNG_FILE_EXTENSION = '.png'
+METAMODEL_NAME = 'metamodel'
+MODEL_NAME = f'model{DOT_FILE_EXTENSION}'
+
+# REGEX
+PLANTUML_REGEX = '^plantuml-\d+\.\d+\.\d+\.jar$'
 
 # OTHER
 BUILD_TOOL_FILE_MAPPING = {
