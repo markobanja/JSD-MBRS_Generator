@@ -118,7 +118,10 @@ class MainWindowGUI:
         """
         self.text_editor = tk.Text(self.window, wrap=tk.WORD, font=self.input_text_font, height=30, width=80, undo=True, maxundo=-1, state=tk.DISABLED, cursor='arrow', background=INITIAL_BACKGROUND_COLOR)
         self.text_editor.grid(row=1, column=1, padx=10, pady=5, columnspan=2, sticky='nsew')
+        self.text_editor.bind('<KeyPress>', self.on_scroll)
         self.text_editor.bind('<KeyRelease>', self.type_text)
+        self.text_editor.bind('<MouseWheel>', self.on_scroll)
+        self.text_editor.bind('<B1-Motion>', self.on_scroll)
         logging.info('Text editor widget initialized')
     
     def init_console_frame(self):
@@ -154,18 +157,18 @@ class MainWindowGUI:
             return
 
         self.project_name = utils.get_base_name(self.project_path)
-        logging.info(f'Checking if folder "{self.project_path}" is a valid Spring Boot application')
+        logging.info(f'Checking if folder "{self.project_name}" is a valid Spring Boot application')
         build_tool, is_spring_boot = utils.is_spring_boot_application(self.project_path)
         if not is_spring_boot:
             self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["WARN"]} The selected folder "{self.project_name}" is not a valid Spring Boot application!', fg=WARNING_COLOR)
             self.initial_state()
-            logging.warning('Folder is not a valid Spring Boot application')
+            logging.warning(f'Folder "{self.project_name}" is not a valid Spring Boot application')
             return
 
         self.working_state()
         self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} The selected folder "{self.project_name}" is a valid {build_tool} Spring Boot application.', fg=INFORMATION_COLOR)
         self.text_editor.insert(tk.INSERT, 'Hello World!')
-        logging.info('Folder is a valid Spring Boot application')
+        logging.info(f'Folder "{self.project_name}" is a valid Spring Boot application')
 
     def generate_action(self):
         """
@@ -232,7 +235,8 @@ class MainWindowGUI:
         self.export_button.config(state=tk.DISABLED)
         self.text_editor.delete('1.0', tk.END)
         self.text_editor.config(state=tk.DISABLED, cursor='arrow', background=INITIAL_BACKGROUND_COLOR)
-        logging.info('Main window initial state set')
+        self.update_line_numbers()
+        logging.debug('Main window initial state set')
 
     def working_state(self):
         """
@@ -242,25 +246,46 @@ class MainWindowGUI:
         self.export_button.config(state=tk.DISABLED)
         self.text_editor.delete('1.0', tk.END)
         self.text_editor.config(state=tk.NORMAL, cursor='ibeam', background=WORKING_BACKGROUND_COLOR)
-        logging.info('Main window working state set')
+        self.update_line_numbers()
+        logging.debug('Main window working state set')
 
     def update_line_numbers(self, event=None):
         """
         Updates the line numbers in the line number text widget based on the content of the text editor.
         """
-        content = self.text_editor.get('1.0', tk.END)
-        total_lines = content.count('\n')
+        logging.debug('Updating line numbers in the line number text widget.')
         self.line_number_text.config(state=tk.NORMAL)
         self.line_number_text.delete('1.0', tk.END)
-        line_numbers = ''.join(f'{i}\n' for i in range(1, total_lines + 1))
-        self.line_number_text.insert(tk.END, line_numbers, 'right_align')
+        content = self.text_editor.get('1.0', tk.END)
+        total_lines = content.count('\n')
+        line_numbers = ''.join(f'{i}\n' for i in range(1, total_lines))
+        self.line_number_text.insert(tk.END, str(line_numbers), 'right_align')
+        self.line_number_text.insert(tk.END, str(total_lines), 'right_align')
         self.line_number_text.config(state=tk.DISABLED)
+        logging.debug(f'Line numbers updated. Total lines: {total_lines}.')
+        self.sync_line_number_yview()
 
     def type_text(self, event=None):
         """
         Handler function for the '<KeyRelease>' event.
         """
         self.update_line_numbers(event)
+
+    def on_scroll(self, event=None):
+        """
+        Handle the scroll event and schedule an update for the line numbers.
+        """
+        logging.debug('Scroll event detected. Scheduling line numbers update.')
+        self.window.after(1, self.update_line_numbers)
+
+    def sync_line_number_yview(self):
+        """
+        Sync the vertical scrolling of the line number text widget with the text editor's vertical scrolling.
+        """
+        logging.debug('Syncing line number text widget with text editor yview.')
+        yview = self.text_editor.yview()
+        self.line_number_text.yview_moveto(yview[0])
+        logging.debug('Line number text widget yview synced with text editor yview.')
 
     def run(self):
         """
