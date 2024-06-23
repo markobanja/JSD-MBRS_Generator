@@ -3,7 +3,7 @@ import string
 import logging
 import config as cfg
 from os import getcwd, listdir, makedirs
-from os.path import exists, isdir, basename
+from os.path import exists, isdir, basename, commonpath
 from pathlib import Path
 
 
@@ -37,6 +37,13 @@ def get_path(*paths):
     
     return combined_path
 
+def compare_paths(path1, path2):
+    """
+    Compares two paths and returns True if they are the same.
+    """
+    logging.debug(f'Comparing paths: "{path1}" and "{path2}"')
+    return commonpath([path1]) == commonpath([path1, path2])
+
 def create_folder(base_path, folder_name):
     """
     Creates a folder at the given base path with the specified name.
@@ -64,19 +71,40 @@ def file_exists(folder_path, file_name):
         logging.error(f'The "{file_name}" file does not exist in the "{folder_path}" folder!')
         raise FileNotFoundError(f'The "{file_name}" file does not exist in the "{folder_path}" folder!')
 
+def read_file(file_path, encoding='utf-8'):
+    """
+    Reads the contents of a file.
+    """
+    logging.debug(f'Reading file: "{file_path}"')
+    with open(file_path, mode='r', encoding=encoding) as file:
+        content = file.read()
+    logging.debug(f'Successfully read "{file_path}" file')
+    return content
+
+def write_to_file(file_path, content, encoding='utf-8'):
+    """
+    Writes the given content to a file.
+    """
+    logging.debug(f'Writing to file: "{file_path}"')
+    with open(file_path, mode='w', encoding=encoding) as file:
+        file.write(content)
+    logging.debug(f'Successfully wrote to "{file_path}" file')
+
 def find_specific_file_regex(folder_path, regex):
     """
-    Finds a file in the given folder that matches the given regular expression.
+    Finds files in the given folder that match the given regular expression pattern, and returns them sorted in descending order.
     """
+    result_files = []
     compiled_regex = re.compile(regex)
     logging.debug(f'Searching for file matching regex "{regex}" in folder "{folder_path}"')
     files = listdir(folder_path)
     for file_name in files:
         if compiled_regex.search(file_name):
             logging.debug(f'Found file "{file_name}" matching regex in folder')
-            return file_name
-    logging.debug(f'No files matching regex found in folder')
-    return None
+            result_files.append(file_name)
+    result_files.sort(reverse=True)
+    logging.debug(f'Found {len(result_files)} files matching regex in folder')
+    return result_files
 
 def set_font(font_name, font_size, bold=False):
     """
@@ -94,16 +122,6 @@ def convert_rgb_to_hex(rgb_value):
     hex_value = '#%02x%02x%02x' % rgb_value # Convert the RGB values to a hexadecimal color code
     logging.debug(f'Converting RGB values ({red}, {green}, {blue}) to hex: {hex_value}')
     return hex_value
-
-def read_file(file_path, encoding='utf-8'):
-    """
-    Reads the contents of a file.
-    """
-    logging.debug(f'Reading file: "{file_path}"')
-    with open(file_path, mode='r', encoding=encoding) as file:
-        content = file.read()
-    logging.debug(f'Successfully read "{file_path}" file')
-    return content
 
 def is_spring_boot_application(folder_path):
     """
