@@ -123,7 +123,7 @@ def execute_dot_cmd_command(file_name, folder_path):
     Execute the dot command to convert the dot file to PNG format.
     """
     try:
-        logging.info(f'Converting DOT file "{file_name}" to PNG.')
+        logging.info(f'Converting DOT file "{file_name}" to PNG')
         dot_file_path = utils.get_path(folder_path, file_name)
         graphs = pydot.graph_from_dot_file(dot_file_path)
         if graphs:
@@ -131,12 +131,11 @@ def execute_dot_cmd_command(file_name, folder_path):
             png_file_name = f'{file_name}{cfg.PNG_FILE_EXTENSION}'
             output_file_path = utils.get_path(folder_path, png_file_name)
             graph.write_png(output_file_path)
-            logging.info(f'DOT file "{file_name}" converted to "{png_file_name}" successfully.')
+            logging.info(f'DOT file "{file_name}" converted to "{png_file_name}" successfully')
             return cfg.OK
         else:
-            logging.warning(f'No graphs found in "{dot_file_path}".')
+            logging.warning(f'No graphs found in "{dot_file_path}"')
             return cfg.WARNING
-
     except Exception as e:
         logging.error(f'Failed to convert DOT file "{file_name}" to PNG: {str(e)}')
         raise
@@ -146,25 +145,27 @@ def execute_plantuml_cmd_command(file_name, folder_path):
     Execute the PlantUML command to convert the PlantUML file to PNG format.
     """
     try:
-        logging.info(f'Converting PlantUML file "{file_name}" to PNG.')
+        logging.info(f'Converting PlantUML file "{file_name}" to PNG')
         utils.folder_exists(cfg.RESOURCES_FOLDER)
 
         # Find the PlantUML jar file in the resources folder
         plantuml_file_name = utils.find_specific_file_regex(cfg.RESOURCES_FOLDER, cfg.PLANTUML_REGEX)
         if not plantuml_file_name:
-            logging.warning(f'No PlantUML jar file found in the "{cfg.RESOURCES_FOLDER}" folder.')
+            logging.warning(f'No PlantUML jar file found in the "{cfg.RESOURCES_FOLDER}" folder')
             return
+        elif len(plantuml_file_name) > 1:
+            logging.warning(f'More than one PlantUML jar file found in the "{cfg.RESOURCES_FOLDER}" folder. Using the newest one: {plantuml_file_name[0]}')
 
         current_directory = utils.get_current_path()
-        plantuml_path = utils.get_path(current_directory, cfg.RESOURCES_FOLDER, plantuml_file_name)
+        plantuml_path = utils.get_path(current_directory, cfg.RESOURCES_FOLDER, plantuml_file_name[0])
         command = f'java -jar {plantuml_path} -Tpng {file_name}'
         subprocess.run(command, shell=True, check=True, cwd=folder_path, capture_output=True, text=True)
         png_file_name = f'{file_name}{cfg.PNG_FILE_EXTENSION}'
-        logging.info(f'PlantUML file "{file_name}" converted to "{png_file_name}" successfully.')
+        logging.info(f'PlantUML file "{file_name}" converted to "{png_file_name}" successfully')
         return cfg.OK
     except subprocess.CalledProcessError as e:
         error_message = str(e.stderr).replace('\n', '. ').rstrip('. ')
-        logging.warning(f'{error_message}.')
+        logging.warning(f'{error_message}')
         return cfg.WARNING
     except FileNotFoundError as e:
         raise

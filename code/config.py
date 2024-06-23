@@ -5,6 +5,7 @@ COLORS = {
     # GUI colors
     'initial_background': (240, 240, 240),
     'working_background': (255, 255, 255),
+    'black': (0, 0, 0),
 
     # Text colors
     'ok': (27, 152, 81),
@@ -18,6 +19,7 @@ CONSOLE_LOG_LEVEL_TAGS  = {
     'WARN': '[WARNING]',
     'ERROR': '[ERROR]',
 }
+DEFAULT_CONTENT = 'Hello World!'
 # Main window
 MAIN_WINDOW_TITLE = 'JSD-MBRS Generator'
 MAIN_WINDOW_WIDTH = 800
@@ -27,6 +29,10 @@ HELP_WINDOW_TITLE = 'JSD-MBRS Generator Help Information'
 HELP_BUTTON_TEXT = f'{CONSOLE_LOG_LEVEL_TAGS["INFO"]} Click on the Help button to get familiar with the JSD-MBRS Generator syntax or open a Spring Boot project and generate files.'
 HELP_WINDOW_WIDTH = 750
 HELP_WINDOW_HEIGHT = 400
+# Save window
+SAVE_WINDOW_TITLE = 'Save Grammar'
+SAVE_WINDOW_WIDTH = 250
+SAVE_WINDOW_HEIGHT = 150
 
 # TEXTX GRAMMAR
 # Folders
@@ -46,11 +52,13 @@ WARNING = 'WARNING'
 DOT_FILE_EXTENSION = '.dot'
 PLANTUML_FILE_EXTENSION = '.pu'
 PNG_FILE_EXTENSION = '.png'
+JSD_MBRS_GENERATOR_EXTENSION = '.jsdmbrs'
 METAMODEL_NAME = 'metamodel'
 MODEL_NAME = f'model{DOT_FILE_EXTENSION}'
 
 # REGEX
-PLANTUML_REGEX = '^plantuml-\d+\.\d+\.\d+\.jar$'
+PLANTUML_REGEX = r'^plantuml-\d+\.\d+\.\d+\.jar$'
+JSD_MBRS_GENERATOR_REGEX = r"\w+\.jsdmbrs$"
 
 # OTHER
 BUILD_TOOL_FILE_MAPPING = {
@@ -58,3 +66,4 @@ BUILD_TOOL_FILE_MAPPING = {
     'Gradle-Kotlin': 'build.gradle.kts',
     'Maven': 'pom.xml'
 }
+KEYSYMS_TO_IGNORE = ['Shift_L', 'Shift_R', 'Control_L', 'Control_R', 'Alt_L', 'Alt_R', 'Left', 'Right', 'Up', 'Down']
