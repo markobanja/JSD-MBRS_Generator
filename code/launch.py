@@ -12,7 +12,7 @@ def launch():
         logging.info('Launching MainWindowGUI')
         gui = MainWindowGUI()
         gui.run()
-    except (eh.MetamodelCreationError, eh.ModelCreationError, FileNotFoundError) as e:
+    except (eh.MetamodelCreationError, eh.ModelCreationError, FileNotFoundError):
         raise
     except Exception as e:
         logging.error(f'An unexpected error occurred: {e}')
