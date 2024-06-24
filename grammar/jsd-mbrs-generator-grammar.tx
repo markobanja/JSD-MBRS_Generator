@@ -1,11 +1,32 @@
 EntityModel:
+    'Database' '{'
+        database=Database
+    '}'
     entities+=Entity
+;
+
+Database:
+    'driver: ' driver=Driver
+    'database name:' database_name=DatabasePattern
+    ('username:' username=DatabasePattern)?
+    ('password:' password=DatabasePattern)?
 ;
 
 Entity:
     (class_modifier=Modifier)? 'class' name=ID '{'
         properties+=Property
+        'Constructors' '{' 
+            constructors+=Constructors
+        '}'
+        'Methods' '{'
+            (methods+=Methods)?
+        '}'
+        'toString:' to_string=YesNoValue
     '}'
+;
+
+Driver:
+    'postgresql' | 'mysql' | 'sqlserver' | 'oracle'
 ;
 
 Modifier:
@@ -13,11 +34,27 @@ Modifier:
 ;
 
 Property:
-    name=ID ':' property_type=[Type]
+    name=ID ':' (constant?='constant')? property_type=[Type] (list_type=[ListType])? (relationship=Relationship)? (encapsulation=Encapsulation)? (property_value=Value)? ';'
+;
+
+Constructors:
+    empty_constructor?='empty' | default_constructor?='default' | '[' property_list=[Property] (', ' property_list=[Property])* ']'
+;
+
+Methods:
+    VoidMethod | ReturnMethod
+;
+
+VoidMethod:
+    (static?='static')? 'void' name=ID ('(' property_list=[Property] (', ' property_list=[Property])* ')')?
+;
+
+ReturnMethod:
+    (static?='static')? method_type=[Type] name=ID ('(' property_list=[Property] (', ' property_list=[Property])* ')')?
 ;
 
 Type:
-    IDType | DataType | Entity
+    IDType | DataType | DateType | Entity
 ;
 
 IDType:
@@ -25,15 +62,67 @@ IDType:
 ;
 
 DataType:
-    type=DefaultTypes
+    PrimitiveDataType | OtherDataType
+;
+
+DateType:
+    type=DateTypes
+;
+
+PrimitiveDataType:
+    type=PrimitiveDataTypes
+;
+
+OtherDataType:
+    type=OtherDataTypes
+;
+
+ListType:
+    type=ListTypes
 ;
 
 IDTypes:
-    'id' | 'identificator'
+    'id' | 'identifier' | 'uniqueId' | 'key' | 'primaryKey'
 ;
 
-DefaultTypes:
-    ID | INT | FLOAT | STRING | BOOL | STRICTFLOAT
+PrimitiveDataTypes:
+    'byte' | 'short' | 'char' | 'int' | 'integer' | 'float' | 'long' | 'double' | 'boolean'
+;
+
+OtherDataTypes:
+    'string' | 'constant'
+;
+
+DateTypes:
+    'date' | 'time' | 'datetime'
+;
+
+ListTypes:
+    'array' | 'linked list' | 'list' | 'set'
+;
+
+YesNoValue:
+    'yes' | 'no'
+;
+
+Relationship:
+    '1-1' | '1-n' | 'n-1' | 'n-n'
+;
+
+Encapsulation:
+    '(' EncapsulationOptions? ')'
+;
+
+EncapsulationOptions:
+    (get='get' ',' set='set') | (get='get') | (set='set')
+;
+
+Value:
+    '=' value=/[^\/;\r\n]+/
+;
+
+DatabasePattern:
+    /[a-zA-Z_\r\n]+/
 ;
 
 Comment:
