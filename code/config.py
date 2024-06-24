@@ -13,7 +13,7 @@ COLORS = {
     'warning': (255, 102, 34),
     'error': (204, 0, 0),
 }
-CONSOLE_LOG_LEVEL_TAGS  = {
+CONSOLE_LOG_LEVEL_TAGS = {
     'OK': '[OK]',
     'INFO': '[INFO]',
     'WARN': '[WARNING]',
@@ -36,15 +36,14 @@ SAVE_WINDOW_HEIGHT = 150
 
 # TEXTX GRAMMAR
 # Folders
-JSD_MBRS_GENERATOR_FOLDER = 'jsd-mbrs-generator'
+JSD_MBRS_GENERATOR_FOLDER = 'jsd_mbrs_generator'
 GRAMMAR_FOLDER = 'grammar'
 RESOURCES_FOLDER = 'resources'
 EXPORT_FOLDER = 'export'
 EXPORT_DOT_FOLDER = 'dot'
 EXPORT_PLANTUML_FOLDER = 'plantuml'
 # Files
-GRAMMAR_FILE = 'jsd-mbrs-generator-grammar.tx'
-GRAMMAR_INPUT_FILE = 'test_input.jsdmbrs'
+GRAMMAR_FILE = 'jsd_mbrs_generator_grammar.tx'
 HELP_FILE = 'help.txt'
 # Other
 OK = 'OK'

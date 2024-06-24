@@ -1,8 +1,9 @@
 import utils
 import logging
+import threading
 import config as cfg
 import tkinter as tk
-import textx_grammar as tg
+from textx_grammar import TextXGrammar as tg
 from ttkthemes import ThemedStyle
 from tkinter import ttk, scrolledtext, filedialog, messagebox
 
@@ -57,12 +58,11 @@ class MainWindowGUI:
         logging.info('Initializing main window variables')
         self.save_window_instance = None  # To track the instance of the save window
         self.help_window_instance = None  # To track the instance of the help window
-        self.metamodel = None
-        self.model = None
         self.project_path = None
         self.project_name = None
         self.grammar_file_name = None
         self.grammar_file_content = None
+        self.busy = False
 
     def init_window(self):
         """
@@ -175,6 +175,10 @@ class MainWindowGUI:
         If it is, sets the working state otherwise sets the initial state.
         """
         try:
+            # Check if there is any action running
+            if self.busy:
+                return
+            
             logging.info('Opening project folder')
             self.project_path = filedialog.askdirectory(title='Select Spring Boot project folder')
             if not self.project_path:
@@ -191,7 +195,7 @@ class MainWindowGUI:
                 return
 
             self.working_state()
-            self.create_jsdmbrs_directory()
+            self.create_necessary_folders()
             content = self.get_grammar_file_content()
             self.text_editor.insert(tk.INSERT, content)
             self.update_line_numbers()
@@ -207,6 +211,10 @@ class MainWindowGUI:
         Save the grammar file using the current file name if set; otherwise, prompt for a new file name using SaveWindowGUI.
         """
         try:
+            # Check if there is any action running
+            if self.busy:
+                return
+            
             # If the file name is already set, save it
             if self.grammar_file_name is not None:
                 logging.info(f'Saving to "{self.grammar_file_name}" grammar file')
@@ -224,47 +232,91 @@ class MainWindowGUI:
             logging.error(error_message)
             self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(error_message)}', fg=ERROR_COLOR)
 
-    def generate_action(self):
+    def generate_action(self, event=None):
         """
-        Get the names of all entities in the model and insert them into the text editor.
+        Handles the action of generating metamodel and model.
         """
-        try:
-            logging.info('Getting entity names')
-            self.metamodel, self.model = tg.test_run()
-            entities = ', '.join([f'"{entity.name}"' for entity in self.model.entities])
-            self.text_editor.delete('1.0', tk.END)
-            self.text_editor.insert(tk.INSERT, entities)
-            self.update_line_numbers()
-            self.export_button.config(state=tk.NORMAL)
-            logging.info('Entity names retrieved and inserted into the text editor')
-        except Exception as e:
-            error_message = f'Failed to get entity names: {str(e)}'
-            logging.error(error_message)
-            self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(error_message)}', fg=ERROR_COLOR)
-    
+        def run_generate_action():
+            """
+            Run the generate action in a separate thread.
+            """
+            try:
+                # Check if the grammar file name is set
+                if self.grammar_file_name is None:
+                    messagebox.showwarning(title='Warning', message='Please save the grammar file first!')
+                    self.generate_button.config(state=tk.DISABLED)
+                    return
+
+                logging.info('Starting generate action')
+                self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} Generating, please wait...', fg=INFORMATION_COLOR)
+                self.window.update_idletasks()
+                self.save_grammar_action(event=True)
+                response = tg.generate(self.project_path, self.grammar_file_name)
+                if response is cfg.OK:
+                    self.export_button.config(state=tk.NORMAL)
+                    response_color = OK_COLOR
+                    response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["OK"]} Successfully executed generate action.'
+                else:
+                    response_color = ERROR_COLOR
+                    response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(response)}'
+                self.console_output.config(text=response_text, fg=response_color)
+            except Exception as e:
+                error_message = f'Failed to generate metamodel and model: {str(e)}'
+                logging.error(error_message)
+                self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(error_message)}', fg=ERROR_COLOR)
+            finally:
+                # Reset flag for the next action
+                self.busy = False
+
+        # Check if there is any action running
+        if self.busy:
+            return
+        # Run the generate action in a separate thread
+        self.busy = True
+        threading.Thread(target=run_generate_action).start()
+
     def export_action(self):
         """
         Export the metamodel and model files to the project export folder.
         """
-        export_folder = utils.get_path(cfg.JSD_MBRS_GENERATOR_FOLDER, cfg.EXPORT_FOLDER)
-        logging.info(f'Starting to export metamodel and model files to the "{export_folder}" folder')
-        self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} Exporting, please wait...', fg=INFORMATION_COLOR)
-        self.window.update_idletasks()
+        def run_export_action():
+            """
+            Run the export action in a separate thread.
+            """
+            try:
+                export_folder = utils.get_path(cfg.JSD_MBRS_GENERATOR_FOLDER, cfg.EXPORT_FOLDER)
+                logging.info(f'Starting to export metamodel and model files to the "{export_folder}" folder')
+                self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} Exporting, please wait...', fg=INFORMATION_COLOR)
+                self.window.update_idletasks()
 
-        # Export the metamodel and model to the project folder
-        response = tg.export(self.metamodel, self.model, self.project_path)
-        if response is cfg.OK:
-            response_color = OK_COLOR
-            response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["OK"]} Successfully exported files to the "{export_folder}" folder.'
-        elif response is cfg.WARNING:
-            response_color = WARNING_COLOR
-            response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["WARN"]} Files exported with warnings to the "{export_folder}" folder.'
-        else:
-            response_color = ERROR_COLOR
-            response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(response)}'
+                # Export the metamodel and model to the project folder
+                response = tg.export(self.project_path)
+                if response is cfg.OK:
+                    response_color = OK_COLOR
+                    response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["OK"]} Successfully exported files to the "{export_folder}" folder.'
+                elif response is cfg.WARNING:
+                    response_color = WARNING_COLOR
+                    response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["WARN"]} Files exported with warnings to the "{export_folder}" folder.'
+                else:
+                    response_color = ERROR_COLOR
+                    response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(response)}'
 
-        # Update the console output
-        self.console_output.config(text=response_text, fg=response_color)
+                # Update the console output
+                self.console_output.config(text=response_text, fg=response_color)
+            except Exception as e:
+                error_message = f'Failed to export the textX grammar metamodel and/or model: {str(e)}'
+                logging.error(error_message)
+                self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(error_message)}', fg=ERROR_COLOR)
+            finally:
+                # Reset flag for the next action
+                self.busy = False
+
+        # Check if there is any action running
+        if self.busy:
+            return
+        # Run the export in a separate thread
+        self.busy = True
+        threading.Thread(target=run_export_action).start()
     
     def help_action(self):
         """
@@ -338,6 +390,16 @@ class MainWindowGUI:
         self.text_editor.config(state=tk.NORMAL, cursor='ibeam', background=WORKING_BACKGROUND_COLOR)
         logging.debug('Main window working state set')
 
+    def create_necessary_folders(self):
+        """
+        Create the necessary folders in the project folder if they don't exist.
+        """
+        utils.create_folder(self.project_path, cfg.JSD_MBRS_GENERATOR_FOLDER)
+        jsd_mbrs_generator_folder_path = utils.get_path(self.project_path, cfg.JSD_MBRS_GENERATOR_FOLDER)
+        utils.create_folder(jsd_mbrs_generator_folder_path, cfg.GRAMMAR_FOLDER)
+        utils.create_folder(jsd_mbrs_generator_folder_path, cfg.EXPORT_FOLDER)
+        utils.create_folder(jsd_mbrs_generator_folder_path, cfg.RESOURCES_FOLDER)
+
     def update_line_numbers(self, event=None):
         """
         Updates the line numbers in the line number text widget based on the content of the text editor.
@@ -373,20 +435,22 @@ class MainWindowGUI:
         Save the content of the text editor to a file with the specified grammar file name.
         """
         text_content = self.get_text_editor_content()
-        file_path = f'{self.project_path}/{cfg.JSD_MBRS_GENERATOR_FOLDER}/{self.grammar_file_name}'
+        grammar_folder_path = utils.get_path(self.project_path, cfg.JSD_MBRS_GENERATOR_FOLDER, cfg.GRAMMAR_FOLDER)
+        file_path = utils.get_path(grammar_folder_path, self.grammar_file_name)
+        utils.file_exists(grammar_folder_path, self.grammar_file_name)
         utils.write_to_file(file_path, text_content)
         self.circle_canvas.itemconfig(self.circle, fill=OK_COLOR)
         self.grammar_file_content = text_content
         if not event:
             messagebox.showinfo('File Name', f'The grammar "{self.grammar_file_name}" has been saved successfully!')
-        logging.info(f'Saved grammar file content to "{self.grammar_file_name}"')
+        logging.info(f'Saved text editor content to "{self.grammar_file_name}"')
 
     def get_grammar_file_content(self):
         """
         Searches for grammar file in the specified folder and return its content.
         If no grammar files are found, a default content is returned. If multiple grammar files are found, the user is prompted to select one.
         """
-        folder_path = utils.get_path(self.project_path, cfg.JSD_MBRS_GENERATOR_FOLDER)
+        folder_path = utils.get_path(self.project_path, cfg.JSD_MBRS_GENERATOR_FOLDER, cfg.GRAMMAR_FOLDER)
         grammar_array = utils.find_specific_file_regex(folder_path, cfg.JSD_MBRS_GENERATOR_REGEX)
         if len(grammar_array) == 0:
             # No grammar files found, use a default content
@@ -419,12 +483,6 @@ class MainWindowGUI:
         else:
             logging.debug('Text editor content matches the grammar file content')
             self.circle_canvas.itemconfig(self.circle, fill=OK_COLOR)
-
-    def create_jsdmbrs_directory(self):
-        """
-        Create the JSD-MBRS directory if it does not exist.
-        """
-        utils.create_folder(self.project_path, cfg.JSD_MBRS_GENERATOR_FOLDER)
 
     def get_text_editor_content(self):
         """
@@ -583,15 +641,25 @@ class SaveWindowGUI(tk.Toplevel):
         """
         self.save_entry = tk.Entry(self.save_window, width=50)
         self.save_entry.pack(padx=10, pady=5)
+        self.save_entry.bind('<KeyRelease>', self.on_type_text)
         logging.info('Entry widget initialized')
 
     def init_save_button(self):
         """
         Initialize the save button widget.
         """
-        self.submit_button = ttk.Button(self.save_window, text='Save grammar', command=self.save_file_name, compound=tk.TOP, style='Button.TButton')
+        self.submit_button = ttk.Button(self.save_window, text='Save grammar', command=self.save_file_name, compound=tk.TOP, style='Button.TButton', state=tk.DISABLED)
         self.submit_button.pack(pady=10)
         logging.info('Button widget initialized')
+
+    def on_type_text(self, event=None):
+        """
+        Updates the state of the save button based on the content of the save entry widget.
+        """
+        if self.get_save_entry_text():
+            self.submit_button.config(state=tk.NORMAL)
+        else:
+            self.submit_button.config(state=tk.DISABLED)
 
     def on_save_window_close(self, save_window):
         """
@@ -606,18 +674,27 @@ class SaveWindowGUI(tk.Toplevel):
         """
         Saves the content of the MainWindowGUI text editor to a file with the given file name.
         """
-        file_name = f'{self.save_entry.get().strip()}{cfg.JSD_MBRS_GENERATOR_EXTENSION}'
+        logging.info('Creating a new grammar file')
+        save_entry_text = self.get_save_entry_text()
+        file_name = f'{save_entry_text}{cfg.JSD_MBRS_GENERATOR_EXTENSION}'
         if file_name:
             project_path = self.parent.get_project_path()
             text_content = self.parent.get_text_editor_content()
-            file_path = f'{project_path}/{cfg.JSD_MBRS_GENERATOR_FOLDER}/{file_name}'
+            file_path = utils.get_path(project_path, cfg.JSD_MBRS_GENERATOR_FOLDER, cfg.GRAMMAR_FOLDER, file_name)
             utils.write_to_file(file_path, text_content)
             self.parent.set_grammar_file_name(file_name)
+            self.parent.generate_button.config(state=tk.NORMAL)
             self.parent.circle_canvas.itemconfig(self.parent.circle, fill=OK_COLOR)
             self.parent.grammar_file_content = text_content
-            logging.info(f'Saved "{file_name}" file to "{file_path}"')
+            logging.info(f'Text editor contents saved to a new file: "{file_name}"')
             messagebox.showinfo('File Name', f'The grammar "{file_name}" has been saved successfully!')
             self.on_save_window_close(self.save_window)
         else:
             logging.warning('Input Error: No file name entered')
             messagebox.showwarning('Input Error', 'Please enter a grammar file name.')
+
+    def get_save_entry_text(self):
+        """
+        Returns the file name entered in the save entry widget.
+        """
+        return self.save_entry.get().strip()
