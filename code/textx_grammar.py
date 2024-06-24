@@ -16,7 +16,7 @@ def get_metamodel(grammar_path):
     logging.info(f'Getting metamodel from grammar file: "{grammar_path}"')
     type_builtins = gc.get_type_builtins()
     # Generate the metamodel from the textX grammar file
-    metamodel = metamodel_from_file(grammar_path, classes=[gc.IDType, gc.DataType], builtins=type_builtins)
+    metamodel = metamodel_from_file(grammar_path, classes=[gc.IDType, gc.PrimitiveDataType, gc.OtherDataType, gc.DateType, gc.ListType], builtins=type_builtins)
 
     # Raise an exception if the metamodel is not generated
     if metamodel is None:
