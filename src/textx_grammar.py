@@ -1,12 +1,14 @@
-import pydot
-import utils
 import logging
 import subprocess
-import config as cfg
-import error_handler as eh
-import grammar_classes as gc
+
+import pydot
 from textx import metamodel_from_file
-from textx.export import metamodel_export, model_export, PlantUmlRenderer
+from textx.export import PlantUmlRenderer, metamodel_export, model_export
+
+import src.config as cfg
+import src.error_handler as eh
+import src.grammar_classes as gc
+import src.utils as utils
 
 
 class TextXGrammar():

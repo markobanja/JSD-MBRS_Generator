@@ -1,11 +1,13 @@
-import utils
 import logging
 import threading
-import config as cfg
+
 import tkinter as tk
-from textx_grammar import TextXGrammar as tg
+from tkinter import filedialog, messagebox, scrolledtext, ttk
 from ttkthemes import ThemedStyle
-from tkinter import ttk, scrolledtext, filedialog, messagebox
+
+import src.config as cfg
+import src.utils as utils
+from src.textx_grammar import TextXGrammar as tg
 
 
 INITIAL_BACKGROUND_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['initial_background'])
@@ -78,7 +80,7 @@ class MainWindowGUI:
         config_style(self.window, self.input_text_font)
         self.init_window_components()
         self.initial_state()
-    
+
     def init_window_components(self):
         """
         Initializes the components of the main window.
@@ -98,7 +100,7 @@ class MainWindowGUI:
         toolbar = ttk.Frame(self.window)
         self.open_button = ttk.Button(toolbar, text='Open Project', command=self.open_project_action, compound=tk.TOP, style='Toolbar.TButton')
         self.save_button = ttk.Button(toolbar, text='Save Grammar', command=self.save_grammar_action, compound=tk.TOP, style='Toolbar.TButton', state=tk.DISABLED)
-        self.generate_button = ttk.Button(toolbar, text='Generate', command=self.generate_action, compound=tk.TOP, style='Toolbar.TButton', state=tk.DISABLED)        
+        self.generate_button = ttk.Button(toolbar, text='Generate', command=self.generate_action, compound=tk.TOP, style='Toolbar.TButton', state=tk.DISABLED)
         self.export_button = ttk.Button(toolbar, text='Export', command=self.export_action, compound=tk.TOP, style='Toolbar.TButton', state=tk.DISABLED)
         self.help_button = ttk.Button(toolbar, text='Help', command=self.help_action, compound=tk.TOP, style='Toolbar.TButton')
 
@@ -138,7 +140,7 @@ class MainWindowGUI:
         self.text_editor.bind('<B1-Motion>', self.on_scroll)
         self.text_editor.bind('<Control-s>', self.save_grammar_action)
         logging.info('Text editor widget initialized')
-    
+
     def init_canvas_circle(self):
         """
         Initialize the canvas circle widget.
@@ -178,7 +180,7 @@ class MainWindowGUI:
             # Check if there is any action running
             if self.busy:
                 return
-            
+        
             logging.info('Opening project folder')
             self.project_path = filedialog.askdirectory(title='Select Spring Boot project folder')
             if not self.project_path:
@@ -220,7 +222,7 @@ class MainWindowGUI:
                 logging.info(f'Saving to "{self.grammar_file_name}" grammar file')
                 self.save_file_name(event)
                 return
-
+            
             if self.save_window_instance is None or not self.save_window_instance.winfo_exists():
                 logging.info('Creating new SaveWindowGUI instance')
                 self.save_window_instance = SaveWindowGUI(self)
@@ -300,7 +302,7 @@ class MainWindowGUI:
                 else:
                     response_color = ERROR_COLOR
                     response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(response)}'
-
+                
                 # Update the console output
                 self.console_output.config(text=response_text, fg=response_color)
             except Exception as e:
@@ -317,7 +319,7 @@ class MainWindowGUI:
         # Run the export in a separate thread
         self.busy = True
         threading.Thread(target=run_export_action).start()
-    
+
     def help_action(self):
         """
         Function to open the help window.
@@ -429,7 +431,7 @@ class MainWindowGUI:
         yview = self.text_editor.yview()
         self.line_number_text.yview_moveto(yview[0])
         logging.debug('Line number text widget yview synced with text editor yview')
-    
+
     def save_file_name(self, event):
         """
         Save the content of the text editor to a file with the specified grammar file name.
@@ -471,7 +473,7 @@ class MainWindowGUI:
             self.set_grammar_file_name(utils.get_base_name(file_path))
             logging.info(f'Multiple grammar files found. Selected "{self.grammar_file_name}"')
         return self.grammar_file_content
-
+    
     def compare_grammar_content(self):
         """
         Compare the content of the text editor with the content of the specified grammar file.
@@ -491,21 +493,21 @@ class MainWindowGUI:
         logging.debug('Retrieving text editor content')
         end_minus_one = self.text_editor.index(f'{tk.END}-1c')
         return self.text_editor.get('1.0', end_minus_one)
-
+    
     def get_project_path(self):
         """
         Get the path of the project.
         """
         logging.debug(f'Retrieving project path: "{self.project_path}"')
         return self.project_path
-
+    
     def get_grammar_file_name(self):
         """
         Get the name of the grammar.
         """
         logging.debug(f'Retrieving grammar name: "{self.grammar_file_name}"')
         return self.grammar_file_name
-
+    
     def set_grammar_file_name(self, grammar_file_name):
         """
         Set the name of the grammar.
@@ -566,7 +568,7 @@ class HelpWindowGUI(tk.Toplevel):
         self.parent.help_window_instance = None  # Reset the instance reference in the parent
         help_window.destroy()
         self.parent.window.focus_set()
-
+        
     def read_help_file(self):
         """
         Reads the content of the help file located in the resources folder and returns it as a string.
@@ -575,7 +577,7 @@ class HelpWindowGUI(tk.Toplevel):
         utils.file_exists(cfg.RESOURCES_FOLDER, cfg.HELP_FILE)
         logging.info(f'Reading "{cfg.HELP_FILE}" file')
         return utils.read_file(utils.get_path(cfg.RESOURCES_FOLDER, cfg.HELP_FILE))
-
+    
     def update_help_scrolled_text_widget(self):
         """
         Updates the help scrolled text widget with the content of the help file.
