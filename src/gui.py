@@ -65,6 +65,7 @@ class MainWindowGUI:
         self.grammar_file_name = None
         self.grammar_file_content = None
         self.busy = False
+        self.save_event = threading.Event()  # Event for synchronization
 
     def init_window(self):
         """
@@ -212,27 +213,37 @@ class MainWindowGUI:
         """
         Save the grammar file using the current file name if set; otherwise, prompt for a new file name using SaveWindowGUI.
         """
-        try:
-            # Check if there is any action running
-            if self.busy:
-                return
-            
-            # If the file name is already set, save it
-            if self.grammar_file_name is not None:
-                logging.info(f'Saving to "{self.grammar_file_name}" grammar file')
-                self.save_file_name(event)
-                return
-            
-            if self.save_window_instance is None or not self.save_window_instance.winfo_exists():
-                logging.info('Creating new SaveWindowGUI instance')
-                self.save_window_instance = SaveWindowGUI(self)
-            else:
-                logging.info('Bringing existing SaveWindowGUI instance to the front')
-                self.save_window_instance.lift()
-        except Exception as e:
-            error_message = f'Failed to save grammar: {str(e)}'
-            logging.error(error_message)
-            self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(error_message)}', fg=ERROR_COLOR)
+        def run_save_action():
+            """
+            Run the save action in a separate thread.
+            """
+            try:
+                # If the file name is already set, save it
+                if self.grammar_file_name is not None:
+                    logging.info(f'Saving to "{self.grammar_file_name}" grammar file')
+                    self.save_file_name(event)
+                    self.save_event.set()  # Signal save completion
+                    return
+                
+                if self.save_window_instance is None or not self.save_window_instance.winfo_exists():
+                    logging.info('Creating new SaveWindowGUI instance')
+                    self.save_window_instance = SaveWindowGUI(self)
+                else:
+                    logging.info('Bringing existing SaveWindowGUI instance to the front')
+                    self.save_window_instance.lift()
+            except Exception as e:
+                error_message = f'Failed to save grammar: {str(e)}'
+                logging.error(error_message)
+                self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(error_message)}', fg=ERROR_COLOR)
+            finally:
+                # Reset flag for the next action
+                self.busy = False
+        # Check if there is any action running
+        if self.busy:
+            return
+        # Run the save action in a separate thread
+        self.busy = True
+        threading.Thread(target=run_save_action).start()
 
     def generate_action(self, event=None):
         """
@@ -252,7 +263,12 @@ class MainWindowGUI:
                 logging.info('Starting generate action')
                 self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} Generating, please wait...', fg=INFORMATION_COLOR)
                 self.window.update_idletasks()
+
+                # Wait for save action to complete
                 self.save_grammar_action(event=True)
+                self.save_event.wait()
+
+                self.busy = True
                 response = tg.generate(self.project_path, self.grammar_file_name)
                 if response is cfg.OK:
                     self.export_button.config(state=tk.NORMAL)
@@ -269,12 +285,12 @@ class MainWindowGUI:
             finally:
                 # Reset flag for the next action
                 self.busy = False
+                self.save_event.clear()  # Reset event for next use
 
         # Check if there is any action running
         if self.busy:
             return
         # Run the generate action in a separate thread
-        self.busy = True
         threading.Thread(target=run_generate_action).start()
 
     def export_action(self):
@@ -688,6 +704,7 @@ class SaveWindowGUI(tk.Toplevel):
             self.parent.generate_button.config(state=tk.NORMAL)
             self.parent.circle_canvas.itemconfig(self.parent.circle, fill=OK_COLOR)
             self.parent.grammar_file_content = text_content
+            self.parent.save_event.set()  # Signal save completion
             logging.info(f'Text editor contents saved to a new file: "{file_name}"')
             messagebox.showinfo('File Name', f'The grammar "{file_name}" has been saved successfully!')
             self.on_save_window_close(self.save_window)

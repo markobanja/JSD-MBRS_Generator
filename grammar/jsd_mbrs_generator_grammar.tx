@@ -62,7 +62,7 @@ IDType:
 ;
 
 DataType:
-    PrimitiveDataType | OtherDataType
+    PrimitiveDataType | WrapperDataType | OtherDataType
 ;
 
 DateType:
@@ -71,6 +71,10 @@ DateType:
 
 PrimitiveDataType:
     type=PrimitiveDataTypes
+;
+
+WrapperDataType:
+    type=WrapperDataTypes
 ;
 
 OtherDataType:
@@ -86,7 +90,11 @@ IDTypes:
 ;
 
 PrimitiveDataTypes:
-    'byte' | 'short' | 'char' | 'int' | 'integer' | 'float' | 'long' | 'double' | 'boolean'
+    'byte' | 'short' | 'char' | 'int' | 'float' | 'long' | 'double' | 'boolean'
+;
+
+WrapperDataTypes:
+    'test' | 'Float' | 'Double' | 'Boolean'
 ;
 
 OtherDataTypes:
