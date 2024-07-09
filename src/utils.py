@@ -1,10 +1,12 @@
 import re
 import string
 import logging
-import config as cfg
+
+from pathlib import Path
 from os import getcwd, listdir, makedirs
 from os.path import exists, isdir, basename, commonpath
-from pathlib import Path
+
+import src.config as cfg
 
 
 def get_current_path():
@@ -70,7 +72,7 @@ def file_exists(folder_path, file_name):
     if not exists(file_path):
         logging.error(f'The "{file_name}" file does not exist in the "{folder_path}" folder!')
         raise FileNotFoundError(f'The "{file_name}" file does not exist in the "{folder_path}" folder!')
-
+    
 def read_file(file_path, encoding='utf-8'):
     """
     Reads the contents of a file.
