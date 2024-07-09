@@ -59,6 +59,14 @@ class PrimitiveDataType(DataType):
         super().__init__(self.__class__.__name__, property_type, default_value)
 
 
+class WrapperDataType(DataType):
+    """
+    Class representing a primitive wrapper data type, inheriting from data type.
+    """
+    def __init__(self, property_type, default_value=None):
+        super().__init__(self.__class__.__name__, property_type, default_value)
+
+
 class OtherDataType(DataType):
     """
     Class representing other data type, inheriting from data type.
@@ -89,31 +97,35 @@ def get_type_builtins():
     """
     logging.info('Creating type builtins')
     return {
-        'id': IDType('id', 0),
-        'identifier': IDType('identifier', 0),
-        'uniqueId': IDType('uniqueId', 0),
-        'key': IDType('key', 0),
-        'primaryKey': IDType('primaryKey', 0),
+        'id': IDType('id', '0'),
+        'identifier': IDType('identifier', '0'),
+        'uniqueId': IDType('uniqueId', '0'),
+        'key': IDType('key', '0'),
+        'primaryKey': IDType('primaryKey', '0'),
 
-        'byte': PrimitiveDataType('byte'),
-        'short': PrimitiveDataType('short'),
-        'char': PrimitiveDataType('char'),
-        'int': PrimitiveDataType('int'),
-        'integer': PrimitiveDataType('integer'),
-        'float': PrimitiveDataType('float'),
-        'long': PrimitiveDataType('long'),
-        'double': PrimitiveDataType('double'),
-        'boolean': PrimitiveDataType('boolean'),
+        'byte': PrimitiveDataType('byte', '0'),
+        'short': PrimitiveDataType('short', '0'),
+        'char': PrimitiveDataType('char', '\u0000'),
+        'int': PrimitiveDataType('int', '0'),
+        'float': PrimitiveDataType('float', '0.0F'),
+        'long': PrimitiveDataType('long', '0L'),
+        'double': PrimitiveDataType('double', '0.0D'),
+        'boolean': PrimitiveDataType('boolean', 'false'),
 
-        'string': OtherDataType('string'),
-        'constant': OtherDataType('constant'),
+        'Integer': WrapperDataType('Integer', 'null'),
+        'Float': WrapperDataType('Float', 'null'),
+        'Double': WrapperDataType('Double', 'null'),
+        'Boolean': WrapperDataType('Boolean', 'null'),
+
+        'string': OtherDataType('string', ''),
+        'constant': OtherDataType('constant', 'null'),
 
         'date': DateType('date', '1970-01-01'),
         'time': DateType('time', '00:00:00'),
         'datetime': DateType('datetime', '1970-01-01T00:00:00+00:00'),
 
-        'array': ListType('array'),
-        'linked': ListType('linked'),
-        'list': ListType('list'),
-        'set': ListType('set'),
+        'array': ListType('array', '[]'),
+        'linked': ListType('linked', '[]'),
+        'list': ListType('list', '[]'),
+        'set': ListType('set', '[]'),
     }

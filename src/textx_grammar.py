@@ -75,7 +75,9 @@ class TextXGrammar():
         logging.info(f'Getting metamodel from textX file')
         type_builtins = gc.get_type_builtins()
         # Generate the metamodel from the textX grammar file
-        metamodel = metamodel_from_file(grammar_path, classes=[gc.IDType, gc.PrimitiveDataType, gc.OtherDataType, gc.DateType, gc.ListType], builtins=type_builtins)
+        metamodel = metamodel_from_file(grammar_path, 
+                                        classes=[gc.IDType, gc.PrimitiveDataType, gc.WrapperDataType, gc.OtherDataType, gc.DateType, gc.ListType],
+                                        builtins=type_builtins)
 
         # Raise an exception if the metamodel is not generated
         if metamodel is None:
@@ -83,13 +85,6 @@ class TextXGrammar():
         
         logging.info('Metamodel generated')
         return metamodel
-    
-    def set_metamodel(self, metamodel):
-        """
-        Set the metamodel.
-        """
-        logging.debug('Setting metamodel')
-        self.metamodel = metamodel
 
     def get_model(self, metamodel, model_file_path, grammar_file_name):
         """
@@ -105,6 +100,13 @@ class TextXGrammar():
         
         logging.info('Model generated')
         return model
+    
+    def set_metamodel(self, metamodel):
+        """
+        Set the metamodel.
+        """
+        logging.debug('Setting metamodel')
+        self.metamodel = metamodel
 
     def set_model(self, model):
         """

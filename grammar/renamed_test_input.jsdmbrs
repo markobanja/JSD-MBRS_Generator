@@ -10,7 +10,7 @@ public class Person {
     firstName: string (get, set);
     lastName: string (get, set);
     address: Address 1-1 (get, set);
-    age: integer (get, set);
+    age: int (get, set);
     weight: float (get, set);
     height: double (get, set);
     bloodType: char (get, set);
@@ -19,12 +19,12 @@ public class Person {
     shortConstant: constant short (get) = -32768;
     longConstant: constant long (get) = 0L;
     stringConstant: constant string (get) = "00";
-    integerConstant: constant int (get) = 0;
+    intConstant: constant int (get) = 0;
     floatConstant: constant float (get) = 00f;
     doubleConstant: constant double (get) = 00d;
     booleanConstant: constant boolean (get) = true;
     charConstant: constant char (get) = 'c';
-    employmentNumber: constant integer (get) = 123; // this is a comment
+    employmentNumber: constant int (get) = 123; // this is a comment
     school: School 1-1 (get, set);
     birthday: date (get, set);
     timeFormat: time (get, set);
@@ -35,6 +35,11 @@ public class Person {
     byteVariable: byte (get, set);
     shortVariable: short (get, set);
     longVariable: long (get, set);
+    testInteger: Integer;
+    testIntegerConstant: constant Integer (get) = 123; // this is a comment
+    testFloat: Float;
+    testDouble: Double;
+    testBoolean: Boolean;
 
     Constructors {
         default
@@ -67,7 +72,7 @@ public class Person {
 public class Address {
     idAddress: id (get, set);
     street: string;
-    number: integer;
+    number: int;
     city: string;
     country: string;
     persons: Person list 1-n (get, set);
@@ -82,7 +87,7 @@ public class Address {
 public class School {
     idSchool: id (get, set);
     street: string (get, set);
-    number: integer (get, set);
+    number: int (get, set);
 
     Constructors {
         empty
@@ -95,7 +100,7 @@ public class School {
 public class Grade {
     idGrade: id (get, set);
     street: string (get, set);
-    number: integer (get, set);
+    number: int (get, set);
 
     Constructors {
         default
