@@ -1,6 +1,7 @@
 import re
 import string
 import logging
+from datetime import datetime
 
 from pathlib import Path
 from os import getcwd, listdir, makedirs
@@ -158,4 +159,80 @@ def add_punctuation(text, punctuation='!'):
     Adds punctuation to the end of a text string after removing any existing punctuation.
     """
     logging.debug(f'Adding punctuation: "{punctuation}" to text: "{text}"')
-    return text.rstrip(string.punctuation) + punctuation
+    if text and text[-1] in string.punctuation:
+        text = text[:-1]
+    text += punctuation
+    return text
+
+def validate_property_value(property_type, property_value):
+    """
+    Validates if the provided value is appropriate for the given property type.
+    """
+    def error(message):
+        """
+        Returns an error message.
+        """
+        logging.debug(f'{message} ({property_type} type)')
+        return message
+
+    def validate_datetime(date_str, format):
+        """
+        Validates if the provided string is a valid datetime in specific format.
+        """
+        try:
+            datetime.strptime(date_str, format)
+            return True
+        except ValueError:
+            return False
+
+    property_validation_rules = {
+        # IDTypes
+        cfg.ID: lambda value: isinstance(value, str),
+        cfg.IDENTIFIER: lambda value: isinstance(value, str),
+        cfg.UNIQUE_ID: lambda value: isinstance(value, str),
+        cfg.KEY: lambda value: isinstance(value, str),
+        cfg.PRIMARY_KEY: lambda value: isinstance(value, str),
+
+        # PrimitiveDataTypes
+        cfg.BYTE: lambda value: cfg.OK if isinstance(int(value), int) and -128 <= int(value) <= 127 else error(cfg.ERROR_MESSAGES[cfg.BYTE]),
+        cfg.SHORT: lambda value: cfg.OK if isinstance(int(value), int) and -32768 <= int(value) <= 32767 else error(cfg.ERROR_MESSAGES[cfg.SHORT]),
+        cfg.CHAR: lambda value: cfg.OK if isinstance(value, str) and len(value) == 3 and value[0] == '\'' and value[-1] == '\'' else error(cfg.ERROR_MESSAGES[cfg.CHAR]),
+        cfg.INT: lambda value: cfg.OK if isinstance(int(value), int) and -2147483648 <= int(value) <= 2147483647 else error(cfg.ERROR_MESSAGES[cfg.INT]),
+        cfg.FLOAT: lambda value: cfg.OK if isinstance(float(value[:-1]), (int, float)) and value.upper().endswith('F') else error(cfg.ERROR_MESSAGES[cfg.FLOAT]),
+        cfg.LONG: lambda value: cfg.OK if isinstance(int(value[:-1]), int) and -9223372036854775808 <= int(value[:-1]) <= 9223372036854775807 and value.upper().endswith('L') else error(cfg.ERROR_MESSAGES[cfg.LONG]),
+        cfg.DOUBLE: lambda value: cfg.OK if isinstance(float(value[:-1]), (int, float)) and value.upper().endswith('D') else error(cfg.ERROR_MESSAGES[cfg.DOUBLE]),
+        cfg.BOOLEAN: lambda value: cfg.OK if isinstance(value, str) and value.lower() in ('true', 'false') else error(cfg.ERROR_MESSAGES[cfg.BOOLEAN]),
+
+        # WrapperDataTypes
+        cfg.INTEGER_W: lambda value: cfg.OK if isinstance(int(value), int) and -2147483648 <= int(value) <= 2147483647 else error(cfg.ERROR_MESSAGES[cfg.INTEGER_W]),
+        cfg.FLOAT_W: lambda value: cfg.OK if isinstance(float(value[:-1]), (int, float)) and value.upper().endswith('F') else error(cfg.ERROR_MESSAGES[cfg.FLOAT_W]),
+        cfg.DOUBLE_W: lambda value: cfg.OK if isinstance(float(value[:-1]), (int, float)) and value.upper().endswith('D') else error(cfg.ERROR_MESSAGES[cfg.DOUBLE_W]),
+        cfg.BOOLEAN_W: lambda value: cfg.OK if isinstance(value, str) and value.lower() in ('true', 'false') else error(cfg.ERROR_MESSAGES[cfg.BOOLEAN_W]),
+
+        # OtherDataTypes
+        cfg.STRING: lambda value: cfg.OK if isinstance(value, str) and value.startswith('"') and value.endswith('"') else error(cfg.ERROR_MESSAGES[cfg.STRING]),
+        cfg.CONSTANT: lambda value: cfg.OK if isinstance(value, (str, int, float, bool)) else error(cfg.ERROR_MESSAGES[cfg.CONSTANT]),
+
+        # DateTypes
+        cfg.DATE: lambda value: cfg.OK if isinstance(value, str) and validate_datetime(value, cfg.DATE_REGEX) else error(cfg.ERROR_MESSAGES[cfg.DATE]),
+        cfg.TIME: lambda value: cfg.OK if isinstance(value, str) and validate_datetime(value, cfg.TIME_REGEX) else error(cfg.ERROR_MESSAGES[cfg.TIME]),
+        cfg.DATETIME: lambda value: cfg.OK if isinstance(value, str) and validate_datetime(value, cfg.DATETIME_REGEX) else error(cfg.ERROR_MESSAGES[cfg.DATETIME]),
+
+        # ListTypes
+        cfg.ARRAY: lambda value: cfg.OK if isinstance(value, str) and value.startswith('[') and value.endswith(']') else error(cfg.ERROR_MESSAGES[cfg.ARRAY]),
+        cfg.LINKED: lambda value: cfg.OK if isinstance(value, str) and value.startswith('[') and value.endswith(']') else error(cfg.ERROR_MESSAGES[cfg.LINKED]),
+        cfg.LIST: lambda value: cfg.OK if isinstance(value, str) and value.startswith('[') and value.endswith(']') else error(cfg.ERROR_MESSAGES[cfg.LIST]),
+        cfg.SET: lambda value: cfg.OK if isinstance(value, str) and value.startswith('[') and value.endswith(']') else error(cfg.ERROR_MESSAGES[cfg.SET]),
+    }
+
+    if property_type not in property_validation_rules:
+        logging.error(f'Unknown property type: "{property_type}"')
+        raise ValueError(f"Unknown property type: {property_type}")
+
+    try:
+        result = property_validation_rules[property_type](property_value)
+        logging.debug(f'"{property_value}" is a valid value for "{property_type}" type')
+        return result
+    except ValueError:
+        logging.error(f'"{property_value}" is NOT a valid value for "{property_type}" type: {cfg.ERROR_MESSAGES[property_type]}')
+        return error(f'{cfg.ERROR_MESSAGES[property_type]}')

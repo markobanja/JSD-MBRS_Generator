@@ -94,7 +94,7 @@ PrimitiveDataTypes:
 ;
 
 WrapperDataTypes:
-    'test' | 'Float' | 'Double' | 'Boolean'
+    'Integer' | 'Float' | 'Double' | 'Boolean'
 ;
 
 OtherDataTypes:

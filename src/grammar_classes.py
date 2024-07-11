@@ -1,4 +1,5 @@
 import logging
+import src.config as cfg
 
 
 class PropertyType:
@@ -97,35 +98,35 @@ def get_type_builtins():
     """
     logging.info('Creating type builtins')
     return {
-        'id': IDType('id', '0'),
-        'identifier': IDType('identifier', '0'),
-        'uniqueId': IDType('uniqueId', '0'),
-        'key': IDType('key', '0'),
-        'primaryKey': IDType('primaryKey', '0'),
+        cfg.ID: IDType(cfg.ID, '0'),
+        cfg.IDENTIFIER: IDType(cfg.IDENTIFIER, '0'),
+        cfg.UNIQUE_ID: IDType(cfg.UNIQUE_ID, '0'),
+        cfg.KEY: IDType(cfg.KEY, '0'),
+        cfg.PRIMARY_KEY: IDType(cfg.PRIMARY_KEY, '0'),
 
-        'byte': PrimitiveDataType('byte', '0'),
-        'short': PrimitiveDataType('short', '0'),
-        'char': PrimitiveDataType('char', '\u0000'),
-        'int': PrimitiveDataType('int', '0'),
-        'float': PrimitiveDataType('float', '0.0F'),
-        'long': PrimitiveDataType('long', '0L'),
-        'double': PrimitiveDataType('double', '0.0D'),
-        'boolean': PrimitiveDataType('boolean', 'false'),
+        cfg.BYTE: PrimitiveDataType(cfg.BYTE, '0'),
+        cfg.SHORT: PrimitiveDataType(cfg.SHORT, '0'),
+        cfg.CHAR: PrimitiveDataType(cfg.CHAR, '\u0000'),
+        cfg.INT: PrimitiveDataType(cfg.INT, '0'),
+        cfg.FLOAT: PrimitiveDataType(cfg.FLOAT, '0.0F'),
+        cfg.LONG: PrimitiveDataType(cfg.LONG, '0L'),
+        cfg.DOUBLE: PrimitiveDataType(cfg.DOUBLE, '0.0D'),
+        cfg.BOOLEAN: PrimitiveDataType(cfg.BOOLEAN, 'false'),
 
-        'Integer': WrapperDataType('Integer', 'null'),
-        'Float': WrapperDataType('Float', 'null'),
-        'Double': WrapperDataType('Double', 'null'),
-        'Boolean': WrapperDataType('Boolean', 'null'),
+        cfg.INTEGER_W: WrapperDataType(cfg.INTEGER_W, 'null'),
+        cfg.FLOAT_W: WrapperDataType(cfg.FLOAT_W, 'null'),
+        cfg.DOUBLE_W: WrapperDataType(cfg.DOUBLE_W, 'null'),
+        cfg.BOOLEAN_W: WrapperDataType(cfg.BOOLEAN_W, 'null'),
 
-        'string': OtherDataType('string', ''),
-        'constant': OtherDataType('constant', 'null'),
+        cfg.STRING: OtherDataType(cfg.STRING, ''),
+        cfg.CONSTANT: OtherDataType(cfg.CONSTANT, 'null'),
 
-        'date': DateType('date', '1970-01-01'),
-        'time': DateType('time', '00:00:00'),
-        'datetime': DateType('datetime', '1970-01-01T00:00:00+00:00'),
+        cfg.DATE: DateType(cfg.DATE, '1970-01-01'),
+        cfg.TIME: DateType(cfg.TIME, '00:00:00'),
+        cfg.DATETIME: DateType(cfg.DATETIME, '1970-01-01T00:00:00+00:00'),
 
-        'array': ListType('array', '[]'),
-        'linked': ListType('linked', '[]'),
-        'list': ListType('list', '[]'),
-        'set': ListType('set', '[]'),
+        cfg.ARRAY: ListType(cfg.ARRAY, '[]'),
+        cfg.LINKED: ListType(cfg.LINKED, '[]'),
+        cfg.LIST: ListType(cfg.LIST, '[]'),
+        cfg.SET: ListType(cfg.SET, '[]'),
     }
