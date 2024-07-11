@@ -35,13 +35,13 @@ class TextXGrammar():
             utils.file_exists(project_grammar_folder_path, grammar_file_name)
             file_path = utils.get_path(project_grammar_folder_path, grammar_file_name)
             metamodel = self.get_metamodel(self, utils.get_path(cfg.GRAMMAR_FOLDER, cfg.GRAMMAR_FILE))
-            model = self.get_model(self, metamodel, file_path, grammar_file_name)
+            model = self.get_model(metamodel, file_path, grammar_file_name)
             logging.info('Metamodel and model generated successfully')
             self.set_metamodel(self, metamodel)
             self.set_model(self, model)
             return cfg.OK
         except Exception as e:
-            error_msg = f'Failed to generate metamodel and model: {str(e)}'
+            error_msg = f'{str(e)}'
             logging.error(error_msg)
             return error_msg
     
@@ -83,10 +83,15 @@ class TextXGrammar():
         if metamodel is None:
             raise eh.MetamodelCreationError('Failed to generate metamodel from textX grammar file!')
         
+        # Register object processors to validate (or alter) the object being constructed
+        metamodel.register_obj_processors({
+            'Property': lambda property: self.property_processor(self, property),
+        })
+
         logging.info('Metamodel generated')
         return metamodel
 
-    def get_model(self, metamodel, model_file_path, grammar_file_name):
+    def get_model(metamodel, model_file_path, grammar_file_name):
         """
         Get the model from the given metamodel and model file path.
         """
@@ -131,14 +136,14 @@ class TextXGrammar():
                 metamodel_name = f'{cfg.METAMODEL_NAME}{cfg.DOT_FILE_EXTENSION}'
                 metamodel_export_path = utils.get_path(metamodel_path, metamodel_name)
                 metamodel_export(self.metamodel, metamodel_export_path)
-                result = self.execute_dot_cmd_command(self, metamodel_name, metamodel_path)
+                result = self.execute_dot_cmd_command(metamodel_name, metamodel_path)
             else:
                 # Export the metamodel using the 'PlantUML' tool
                 logging.info('Exporting metamodel using PlantUML tool')
                 metamodel_name = f'{cfg.METAMODEL_NAME}{cfg.PLANTUML_FILE_EXTENSION}'
                 metamodel_export_path = utils.get_path(metamodel_path, metamodel_name)
                 metamodel_export(self.metamodel, metamodel_export_path, renderer=PlantUmlRenderer())
-                result = self.execute_plantuml_cmd_command(self, metamodel_name, metamodel_path)
+                result = self.execute_plantuml_cmd_command(metamodel_name, metamodel_path)
             
             # Set the flag if the export has warnings
             if result == cfg.WARNING:
@@ -155,10 +160,10 @@ class TextXGrammar():
         model_export_path = utils.get_path(project_path, cfg.JSD_MBRS_GENERATOR_FOLDER, cfg.EXPORT_FOLDER, cfg.EXPORT_DOT_FOLDER)
         model_path = utils.get_path(model_export_path, cfg.MODEL_NAME)
         model_export(self.model, model_path)
-        result = self.execute_dot_cmd_command(self, cfg.MODEL_NAME, model_export_path)
+        result = self.execute_dot_cmd_command(cfg.MODEL_NAME, model_export_path)
         return result
 
-    def execute_dot_cmd_command(self, file_name, folder_path):
+    def execute_dot_cmd_command(file_name, folder_path):
         """
         Execute the dot command to convert the dot file to PNG format.
         """
@@ -180,7 +185,7 @@ class TextXGrammar():
             logging.error(f'Failed to convert DOT file "{file_name}" to PNG: {str(e)}')
             raise
 
-    def execute_plantuml_cmd_command(self, file_name, folder_path):
+    def execute_plantuml_cmd_command(file_name, folder_path):
         """
         Execute the PlantUML command to convert the PlantUML file to PNG format.
         """
@@ -212,3 +217,48 @@ class TextXGrammar():
         except Exception as e:
             logging.error(f'Failed to convert PlantUML file "{file_name}" to PNG: {str(e)}')
             raise
+
+    def property_processor(self, property):
+        self.validate_constant_property_value(self, property)
+
+    def validate_constant_property_value(self, property):
+        """
+        Validates the constant value of a property based on its type.
+        """
+        try:
+            # Skip validation if property is not constant
+            if not property.constant:
+                return
+
+            validation_type = property.list_type.type if property.list_type else property.property_type.type
+            value = property.property_value.value.rstrip()
+
+            logging.debug(f'Validating property "{property.name}" with type "{validation_type}" and value "{value}"')
+            response = utils.validate_property_value(validation_type, value)
+            if response is not cfg.OK:
+                raise ValueError(f'Invalid value "{value}" for property "{property.name}" of type "{validation_type}" ({response})!')
+
+            # Validate list elements
+            if property.list_type:
+                self.validate_list_elements(property, value)
+
+        except ValueError as e:
+            logging.error(f'Validation error for property "{property.name}": {str(e)}')
+            raise
+        except Exception as e:
+            logging.error(f'Error validating property "{property.name}": {str(e)}')
+            raise
+
+    def validate_list_elements(property, value):
+        """
+        Validates each element in a list type property.
+        """
+        list_type = property.list_type.type
+        property_type = property.property_type.type
+        logging.debug(f'Validating list elements for property "{property.name}" with type "{property_type}" and value "{value}"')
+        elements = value.strip('[]').split(', ')
+        for element in elements:
+            response = utils.validate_property_value(property_type, element)
+            if response is not cfg.OK:
+                logging.error(f'Invalid value "{element}" in "{value}" {list_type} for property "{property.name}" of type "{property_type}" ({response})!')
+                raise ValueError(f'Invalid value "{element}" in "{value}" {list_type} for property "{property.name}" of type "{property_type}" ({response})!')

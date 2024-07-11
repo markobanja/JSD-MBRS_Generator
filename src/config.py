@@ -58,6 +58,76 @@ MODEL_NAME = f'model{DOT_FILE_EXTENSION}'
 # REGEX
 PLANTUML_REGEX = r'^plantuml-\d+\.\d+\.\d+\.jar$'
 JSD_MBRS_GENERATOR_REGEX = r"\w+\.jsdmbrs$"
+DATE_REGEX = r'%Y-%m-%d'
+TIME_REGEX = r'%H:%M:%S'
+DATETIME_REGEX = r'%Y-%m-%d %H:%M:%S'
+
+# PROPERTY TYPES
+# IDTypes
+ID = 'id'
+IDENTIFIER = 'identifier'
+UNIQUE_ID = 'uniqueId'
+KEY = 'key'
+PRIMARY_KEY = 'primaryKey'
+# PrimitiveDataTypes
+BYTE = 'byte'
+SHORT = 'short'
+CHAR = 'char'
+INT = 'int'
+FLOAT = 'float'
+LONG = 'long'
+DOUBLE = 'double'
+BOOLEAN = 'boolean'
+# WrapperDataTypes
+INTEGER_W = 'Integer'
+FLOAT_W = 'Float'
+DOUBLE_W = 'Double'
+BOOLEAN_W = 'Boolean'
+# OtherDataTypes
+STRING = 'string'
+CONSTANT = 'constant'
+# DateTypes
+DATE = 'date'
+TIME = 'time'
+DATETIME = 'datetime'
+# ListTypes
+ARRAY = 'array'
+LINKED = 'linked'
+LIST = 'list'
+SET = 'set'
+# Custom error messages per property type
+ERROR_MESSAGES = {
+    # PrimitiveDataTypes
+    BYTE: f'{BYTE.capitalize()} value must be a number between -128 and 127',
+    SHORT: f'{SHORT.capitalize()} value must be a number between -32768 and 32767',
+    CHAR: f'{CHAR.capitalize()} value must be a single character string surrounded by single quotes - \'\'',
+    INT: f'{INT.capitalize()} value must be a number between -2147483648 and 2147483647',
+    FLOAT: f'{FLOAT.capitalize()} value must be a float or an integer number that ends with "F"',
+    LONG: f'{LONG.capitalize()} value must be a number between -9223372036854775808 and 9223372036854775807 that ends with "L"',
+    DOUBLE: f'{DOUBLE.capitalize()} value must be a float or an integer number that ends with "D"',
+    BOOLEAN: f'{BOOLEAN.capitalize()} value must be "true" or "false"',
+
+    # WrapperDataTypes
+    INTEGER_W: f'{INTEGER_W.capitalize()} value must be a number between -2147483648 and 2147483647',
+    FLOAT_W: f'{FLOAT_W.capitalize()} value must be a float or an integer number that ends with "F"',
+    DOUBLE_W: f'{DOUBLE_W.capitalize()} value must be a float or an integer number that ends with "D"',
+    BOOLEAN_W: f'{BOOLEAN_W.capitalize()} value must be "true" or "false"',
+
+    # OtherDataTypes
+    STRING: f'{STRING.capitalize()} value must be surrounded by double quotes - ""',
+    CONSTANT: f'{CONSTANT.capitalize()} value must be an int, float, string, or boolean',
+
+    # DateTypes
+    DATE: f'{DATE.capitalize()} value must be in YYYY-MM-DD format',
+    TIME: f'{TIME.capitalize()} value must be in HH:MM:SS format',
+    DATETIME: f'{DATETIME.capitalize()} value must be in YYYY-MM-DD HH:MM:SS format',
+
+    # ListTypes
+    ARRAY: f'{ARRAY.capitalize()} type must start with "[" and end with "]"',
+    LINKED: f'{LINKED.capitalize()} type must start with "[" and end with "]"',
+    LIST: f'{LIST.capitalize()} type must start with "[" and end with "]"',
+    SET: f'{SET.capitalize()} type must start with "[" and end with "]"',
+}
 
 # OTHER
 BUILD_TOOL_FILE_MAPPING = {
