@@ -257,6 +257,15 @@ class TextXGrammar():
         logging.info(f'Updating variables for property "{property.name}"')
         self.add_variables_to_property(property)
         logging.info(f'Starting semantic checks for property "{property.name}"')
+        self.check_property_name(property)
+        self.check_id_property_value(property)
+        self.check_id_property_encapsulation(property)
+        self.check_entity_property(property)
+        self.check_property_relationship(property)
+        self.check_constant_and_value(property)
+        self.check_constant_and_encapsulation(property)
+        self.check_constant_property_value(self, property)
+        logging.info(f'Successfully finished semantic checks for property "{property.name}"')
 
     # MODEL SEMANTIC CHECKS
     def check_unique_class_names(model):
@@ -365,7 +374,175 @@ class TextXGrammar():
         property_type_name = property.property_type.__class__.__name__
         if property_type_name == 'Entity':
             property.property_type.primary_key = False
+    
+    # PROPERTY SEMANTIC CHECKS
+    def check_property_name(property):
+        """
+        Check if the property name is a valid Java variable name.
+        Raise a TextXSemanticError if the property name is not valid.
+        """
+        if not utils.check_value_regex(cfg.JAVA_VARIABLE_NAME_REGEX, property.name):
+            error_message = f'Property name "{property.name}" is not a valid Java variable name! {cfg.JAVA_VARIABLE_NAME_ERROR}'
+            logging.error(error_message)
+            raise TextXSemanticError(error_message, **get_location(property), err_type='property_name_error')
+        
+    def check_id_property_value(property):
+        """
+        Check if the primary key property is declared as constant.
+        Raise a TextXSemanticError if the property value is defined or if the constant keyword is specified.
+        """
+        if property.property_type.primary_key and (property.property_value or property.constant):
+            error_message = f'The "{property.name}" property of type "{property.property_type.type}" should not have a "const" or "constant" keyword specified and/or value defined! Constant values are not allowed for ID properties.'
+            logging.error(error_message)
+            raise TextXSemanticError(error_message, **get_location(property), err_type='id_property_value_error')
+        
+    def check_id_property_encapsulation(property):
+        """
+        Check getter and setter methods for the primary key property.
+        Raise a TextXSemanticError if the conditions are not met.
+        """
+        if property.property_type.primary_key:
+            if not property.encapsulation.get:
+                error_message = f'The "{property.name}" property of type "{property.property_type.type}" requires a getter method to be defined! Getter methods are mandatory for ID properties.'
+                logging.error(error_message)
+                raise TextXSemanticError(error_message, **get_location(property), err_type='id_property_encapsulation_error')
+            elif property.encapsulation.set:
+                error_message = f'The "{property.name}" property of type "{property.property_type.type}" should not have a setter method defined! Setter methods are not allowed for ID properties.'
+                logging.error(error_message)
+                raise TextXSemanticError(error_message, **get_location(property), err_type='id_property_encapsulation_error')
 
+    def check_entity_property(property):
+        """
+        Check if a class property is valid.
+        Raise a TextXSemanticError if the conditions are not met.
+        """
+        property_type_name = property.property_type.__class__.__name__
+        if property_type_name == 'Entity':
+            if property.constant:
+                error_message = f'The "{property.name}" property of the "{property.property_type.name}" class type cannot be declared as a constant! Constant properties cannot have the type "{property_type_name}".'
+                logging.error(error_message)
+                raise TextXSemanticError(error_message, **get_location(property), err_type='entity_property_error')
+            elif property.property_value:
+                error_message = f'The "{property.name}" property of the "{property.property_type.name}" class type cannot have a defined value. Only constant properties can have a defined value.'
+                logging.error(error_message)
+                raise TextXSemanticError(error_message, **get_location(property), err_type='entity_property_error')
+            elif not property.relationship:
+                error_message = f'The "{property.name}" property of the "{property.property_type.name}" class type must have a relationship! Supported relationships are "1-1" (one-to-one), "1-n" (one-to-many), "n-1" (many-to-one), and "n-n" (many-to-many).'
+                logging.error(error_message)
+                raise TextXSemanticError(error_message, **get_location(property), err_type='entity_property_error')
+            elif property.list_type and property.relationship not in ['1-n', 'n-1', 'n-n']:
+                error_message = f'The "{property.name}" list property of the "{property.property_type.name}" class type does not support the "{property.relationship}" relationship! "{property.list_type.name}" properties support "1-n" (one-to-many), "n-1" (many-to-one), and "n-n" (many-to-many) relationships.'
+                logging.error(error_message)
+                raise TextXSemanticError(error_message, **get_location(property), err_type='entity_property_error')
+            elif not property.list_type and property.relationship != '1-1':
+                error_message = f'The "{property.name}" property of the "{property.property_type.name}" class type does not support the "{property.relationship}" relationship! {property_type_name} properties support only "1-1" (one-to-one) relationship.'
+                logging.error(error_message)
+                raise TextXSemanticError(error_message, **get_location(property), err_type='entity_property_error')
+    
+    def check_property_relationship(property):
+        """
+        Check if the property relationship is valid.
+        Raise a TextXSemanticError if the relationship is not valid.
+        """
+        property_type_name = property.property_type.__class__.__name__
+        if property.relationship and not property.list_type and property_type_name not in ['ListType', 'Entity']:
+            error_message = f'The "{property.name}" property cannot have a relationship since it is not of a appropriate type! Only lists and entities support relationships.'
+            logging.error(error_message)
+            raise TextXSemanticError(error_message, **get_location(property), err_type='property_relationship_error')
+    
+    def check_constant_and_value(property):
+        """
+        Check if either 'constant' or 'property_value' is set and the other is not.
+        Raise a TextXSemanticError if the condition is met.
+        """
+        if property.constant ^ bool(property.property_value):  # ^ is the XOR operator
+            missing_element = 'constant keyword' if not property.constant else f'constant property {property.property_type.type} value'
+            error_message = f'If "const" or "constant" keyword is specified, constant value is mandatory, and vice versa! In this case, {missing_element} is missing for "{property.name}".'
+            logging.error(error_message)
+            raise TextXSemanticError(error_message, **get_location(property), err_type='constant_and_value')
+        
+    def check_constant_and_encapsulation(property):
+        """
+        Check if 'constant' is set and 'encapsulation.set' is also set.
+        Raise a TextXSemanticError if the condition is met.
+        """
+        if property.constant and property.encapsulation.set:
+            error_message = f'Constant property "{property.name}" cannot have setter method! Constant properties can only have getter methods.'
+            logging.error(error_message)
+            raise TextXSemanticError(error_message, **get_location(property.encapsulation), err_type='constant_and_encapsulation_error')
+        
+    def check_constant_property_value(self, property):
+        """
+        Checks the constant value of a property based on its type.
+        Raise a TextXSemanticError if the value is invalid.
+        """
+        try:
+            # Skip if property is not constant
+            if not property.constant:
+                return
+            
+            checking_type = property.list_type.type if property.list_type else property.property_type.type
+            value = property.property_value.value.rstrip()
+            logging.debug(f'Checking property "{property.name}" with type "{checking_type}" and value "{value}"')
+            response = utils.check_property_value(checking_type, value)
+            if response is not cfg.OK:
+                error_message = f'Invalid value "{value}" for property "{property.name}" of type "{checking_type}" ({response})!'
+                logging.error(error_message)
+                raise TextXSemanticError(error_message, **get_location(property), err_type='property_value_error')
+            
+            # Check list elements
+            if property.list_type:
+                self.check_list_elements(property, value)
+
+        except TextXSemanticError as e:
+            logging.error(f'Checking error for property "{property.name}": {str(e)}')
+            raise
+        except Exception as e:
+            logging.error(f'Error checking property "{property.name}": {str(e)}')
+            raise
+
+    def check_list_elements(property, value):
+        """
+        Checks each element in a list type property.
+        Raise a TextXSemanticError if an element is invalid.
+        """
+        list_type = property.list_type.type
+        property_type = property.property_type.type
+        logging.debug(f'Checking list elements for property "{property.name}" with type "{property_type}" and value "{value}"')
+        elements = value.strip('[]').split(',')
+        for element in elements:
+            element = element.strip()  # Remove surrounding whitespace
+            response = utils.check_property_value(property_type, element)
+            if response is not cfg.OK:
+                error_message = f'Invalid value "{element}" in "{value}" {list_type} for property "{property.name}" of type "{property_type}" ({response})!'
+                logging.error(error_message)
+                raise TextXSemanticError(error_message, **get_location(property), err_type='list_value_error')
+
+    # CONSTRUCTOR SEMANTIC CHECKS
+    def check_constructor_unique_properties(constructor):
+        """
+        Check if a constructor contains properties that are defined more than once.
+        Raise a TextXSemanticError if a constructor contains non-unique properties.
+        """
+        constructor_property_names = set()
+        for constructor_property in constructor.property_list:
+            if constructor_property.name in constructor_property_names:
+                error_message = f'The specified constructor includes the property "{constructor_property.name}", which is defined more than once! Constructors cannot include non-unique properties.'
+                logging.error(error_message)
+                raise TextXSemanticError(error_message, **get_location(constructor), err_type='constructor_unique_properties_error')
+            constructor_property_names.add(constructor_property.name)
+
+    def check_constructor_constant_property(constructor):
+        """
+        Check if constructor contain constant properties.
+        Raise a TextXSemanticError if a constructor contains constant properties.
+        """
+        for constructor_property in constructor.property_list:
+            if constructor_property.constant:
+                error_message = f'The specified constructor includes the property "{constructor_property.name}", which is defined as a constant! Constructors cannot include properties that are constants.'
+                logging.error(error_message)
+                raise TextXSemanticError(error_message, **get_location(constructor), err_type='constructor_constant_property_error')
+            
     def create_constructor_name(constructor):
         """
         Creates a constructor name from the provided constructor object.
