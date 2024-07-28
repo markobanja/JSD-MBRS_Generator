@@ -195,6 +195,46 @@ def extract_between_quotes(text):
     match = re.search(cfg.QUOTE_REGEX, text)
     return match.group(1) if match else None
 
+def extract_rule_defined_signs_regex(content):
+    """
+    Extract rule defined signs from the provided content using regex.
+    """
+    logging.debug(f'Extracting rule defined signs from text editor content')
+    rule_defined_sign_pattern = re.compile(cfg.RULE_DEFINED_SIGNS_REGEX)
+    rule_defined_signs = [match.group(0) for match in rule_defined_sign_pattern.finditer(content)]
+    logging.debug(f'Found rule defined signs: "{rule_defined_signs}"')
+    return rule_defined_signs
+
+def extract_class_names_regex(content):
+    """
+    Extract class names from the provided content using regex.
+    """
+    logging.debug(f'Extracting class names from text editor content')
+    class_pattern = re.compile(cfg.CLASS_NAME_REGEX)
+    class_names = [match.group(1) for match in class_pattern.finditer(content)]
+    logging.debug(f'Found class names: "{class_names}"')
+    return class_names
+
+def extract_property_values_regex(content):
+    """
+    Extract property values from the provided content using regex.
+    """
+    logging.debug(f'Extracting property values from text editor content')
+    property_pattern = re.compile(cfg.PROPERTY_VALUE_REGEX)
+    property_values = [match.group(1) for match in property_pattern.finditer(content)]
+    logging.debug(f'Found property values: "{property_values}"')
+    return property_values
+
+def extract_comments_regex(content):
+    """
+    Extract comments from the provided content using regex.
+    """
+    logging.debug(f'Extracting comments from text editor content')
+    comment_pattern = re.compile(cfg.COMMENT_REGEX)
+    comments = [match.group(0) for match in comment_pattern.finditer(content)]
+    logging.debug(f'Found comments: "{comments}"')
+    return comments
+
 def check_value_regex(regex_pattern, value_to_check):
     """
     Checks if the provided value matches the provided regex pattern.
@@ -251,8 +291,10 @@ def check_property_value(property_type, property_value):
         # ListTypes
         cfg.ARRAY: lambda value: cfg.OK if isinstance(value, str) and value.startswith('[') and value.endswith(']') else error(cfg.ERROR_MESSAGES[cfg.ARRAY]),
         cfg.LINKED: lambda value: cfg.OK if isinstance(value, str) and value.startswith('[') and value.endswith(']') else error(cfg.ERROR_MESSAGES[cfg.LINKED]),
+        cfg.HASHMAP: lambda value: cfg.OK if isinstance(value, str) and value.startswith('[') and value.endswith(']') else error(cfg.ERROR_MESSAGES[cfg.HASHMAP]),
+        cfg.HASHSET: lambda value: cfg.OK if isinstance(value, str) and value.startswith('[') and value.endswith(']') else error(cfg.ERROR_MESSAGES[cfg.HASHSET]),
+        cfg.TREEMAP: lambda value: cfg.OK if isinstance(value, str) and value.startswith('[') and value.endswith(']') else error(cfg.ERROR_MESSAGES[cfg.TREEMAP]),
         cfg.LIST: lambda value: cfg.OK if isinstance(value, str) and value.startswith('[') and value.endswith(']') else error(cfg.ERROR_MESSAGES[cfg.LIST]),
-        cfg.SET: lambda value: cfg.OK if isinstance(value, str) and value.startswith('[') and value.endswith(']') else error(cfg.ERROR_MESSAGES[cfg.SET]),
     }
 
     if property_type not in property_checking_rules:

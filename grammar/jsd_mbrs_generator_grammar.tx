@@ -106,7 +106,7 @@ DateTypes:
 ;
 
 ListTypes:
-    'array' | 'linked' | 'list' | 'set'
+    'array' | 'linked' | 'hashmap' | 'hashset' | 'treemap' | 'list'
 ;
 
 YesNoValue:
@@ -126,7 +126,7 @@ Encapsulation:
 ;
 
 EncapsulationOptions:
-     GetSetOption | SetGetOption
+    GetSetOption | SetGetOption
 ;
 
 GetSetOption:
