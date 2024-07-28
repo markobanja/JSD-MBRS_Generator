@@ -6,20 +6,24 @@ EntityModel:
 ;
 
 Database:
-    'driver: ' driver=Driver
-    'database name:' database_name=DatabasePattern
-    ('username:' username=DatabasePattern)?
-    ('password:' password=DatabasePattern)?
+    'driver: ' driver=Driver ','
+    'database name:' name=NamePattern
+    (',' credentials=Credentials)?
+;
+
+Credentials:
+    'username:' username=NamePattern ','
+    'password:' password=NamePattern
 ;
 
 Entity:
     (class_modifier=Modifier)? 'class' name=NamePattern '{'
         properties+=Property
         'Constructors' '{' 
-            constructors+=Constructors
+            constructors+=Constructors[',']
         '}'
         'Methods' '{'
-            (methods+=Methods)?
+            (methods+=Methods[','])?
         '}'
         'toString:' to_string=YesNoValue
     '}'
@@ -46,11 +50,11 @@ Methods:
 ;
 
 VoidMethod:
-    (static?='static')? 'void' name=ID ('(' property_list=[Property] (', ' property_list=[Property])* ')')?
+    (static?='static')? 'void' name=NamePattern '(' (property_list=[Property] (', ' property_list=[Property])*)? ')'
 ;
 
 ReturnMethod:
-    (static?='static')? method_type=[Type] name=ID ('(' property_list=[Property] (', ' property_list=[Property])* ')')?
+    (static?='static')? method_type=[Type] name=NamePattern '(' (property_list=[Property] (', ' property_list=[Property])*)? ')'
 ;
 
 Type:
@@ -149,12 +153,8 @@ Value:
     '=' value=ValuePattern
 ;
 
-DatabasePattern:
-    /[a-zA-Z_\r\n]+/
-;
-
 NamePattern:
-    /[^:\n]*\b/
+    /[^:(\n]*\b/
 ;
 
 ValuePattern:

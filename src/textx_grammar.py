@@ -73,12 +73,10 @@ class TextXGrammar():
             return Response(status=cfg.OK)
         except TextXSyntaxError as e:
             error_msg, near_part, found_part = utils.create_syntax_error_message(e)
-            logging.error(f'Error during syntax checks: {error_msg}')
             return Response(status=cfg.ERROR, error=e, error_msg=error_msg, near_part=near_part, found_part=found_part, error_class='TextXSyntaxError')
         except (SemanticError, TextXSemanticError) as e:
             error_msg = f'at position ({str(e.line)},{str(e.col)}): {str(e.message)}'
             error_class = type(e).__name__
-            logging.error(f'Error during semantic checks: {str(e.message)}')
 
             # Determine if the error is due to an unknown object
             if e.err_type == 'Unknown object':
@@ -133,9 +131,11 @@ class TextXGrammar():
         # Register object processors to validate (or alter) the object being constructed
         metamodel.register_obj_processors({
             'EntityModel': lambda model: self.model_processor(self, model),
+            'Database': lambda database: self.database_processor(self, database),
             'Entity': lambda entity: self.entity_processor(self, entity),
             'Property': lambda property: self.property_processor(self, property),
             'Constructors': lambda constructor: self.constructor_processor(self, constructor),
+            'Methods': lambda method: self.method_processor(self, method),
         })
 
         logging.info('Metamodel generated')
@@ -276,6 +276,16 @@ class TextXGrammar():
         self.check_unique_class_names(model)
         logging.info(f'Successfully finished semantic checks for JSD-MBRS Generator "{model.__class__.__name__}"')
 
+    def database_processor(self, database):
+        """
+        Perform semantic checks on the database.
+        """
+        logging.info(f'Starting semantic checks for the database parameters')
+        self.check_database_name(database)
+        self.check_database_username(database)
+        self.check_database_password(database)
+        logging.info(f'Successfully finished semantic checks for the database parameters')
+
     def entity_processor(self, entity):
         """
         Perform semantic checks on each class in the model.
@@ -286,7 +296,7 @@ class TextXGrammar():
         self.check_id_property(entity)
         self.check_empty_constructor(self, entity)
         self.check_unique_constructors(self, entity)
-        self.check_unique_methods(entity)
+        self.check_unique_methods(self, entity)
         logging.info(f'Successfully finished semantic checks for class "{entity.name}"')
 
     def property_processor(self, property):
@@ -303,18 +313,26 @@ class TextXGrammar():
         self.check_property_relationship(property)
         self.check_constant_and_value(property)
         self.check_constant_and_encapsulation(property)
-        self.check_constant_property_value(self, property)
+        self.check_value_of_constant_property(self, property)
         logging.info(f'Successfully finished semantic checks for property "{property.name}"')
 
     def constructor_processor(self, constructor):
         """
         Perform semantic checks on each constructor in the model.
         """
-        constructor_name = self.create_constructor_name(constructor)
+        constructor_name = self.get_constructor_name(constructor)
         logging.info(f'Starting semantic checks for "{constructor_name}" constructor')
         self.check_constructor_unique_properties(constructor)
         self.check_constructor_constant_property(constructor)
         logging.info(f'Successfully finished semantic checks for constructor "{constructor_name}"')
+
+    def method_processor(self, method):
+        """
+        Perform semantic checks on each method in the model.
+        """
+        logging.info(f'Starting semantic checks for method "{method.name}"')
+        self.check_method_name(self, method)
+        logging.info(f'Successfully finished semantic checks for method "{method.name}"')
 
     # MODEL SEMANTIC CHECKS
     def check_unique_class_names(model):
@@ -329,6 +347,37 @@ class TextXGrammar():
                 logging.error(error_message)
                 raise SemanticError(error_message, **get_location(entity), search_value=entity.name, err_type='unique_class_names_error')
             class_names.add(entity.name)
+
+    # DATABASE SEMANTIC CHECKS
+    def check_database_name(database):
+        """
+        Check if the database name is a valid SQL database name.
+        Raise a SemanticError if the database name is not valid.
+        """
+        if not utils.check_value_regex(cfg.SQL_DATABASE_NAME_REGEX, database.name):
+            error_message = cfg.DATABASE_NAME_ERROR % (str(database.driver).capitalize(), database.name, cfg.SQL_DATABASE_NAME_ERROR)
+            logging.error(error_message)
+            raise SemanticError(error_message, **get_location(database), search_value=database.name, err_type='database_name_error')
+
+    def check_database_username(database):
+        """
+        Check if the database username (if provided) is a valid SQL database username.
+        Raise a SemanticError if the database username is not valid.
+        """
+        if database.credentials and not utils.check_value_regex(cfg.SQL_DATABASE_USERNAME_REGEX, database.credentials.username):
+            error_message = cfg.DATABASE_USERNAME_ERROR % (str(database.driver).capitalize(), database.credentials.username, cfg.SQL_DATABASE_USERNAME_ERROR)
+            logging.error(error_message)
+            raise SemanticError(error_message, **get_location(database), search_value=database.credentials.username, err_type='database_username_error')
+        
+    def check_database_password(database):
+        """
+        Check if the database password (if provided) is a valid SQL database password.
+        Raise a SemanticError if the database password is not valid.
+        """
+        if database.credentials and not utils.check_value_regex(cfg.SQL_DATABASE_PASSWORD_REGEX, database.credentials.password):
+            error_message = cfg.DATABASE_PASSWORD_ERROR % (str(database.driver).capitalize(), database.credentials.password, cfg.SQL_DATABASE_PASSWORD_ERROR)
+            logging.error(error_message)
+            raise SemanticError(error_message, **get_location(database), search_value=database.credentials.password, err_type='database_password_error')
 
     # CLASS SEMANTIC CHECKS
     def check_class_name(entity):
@@ -364,17 +413,17 @@ class TextXGrammar():
         for property in entity.properties:
             if property.property_type.primary_key:
                 id_type_count += 1
-                id_property_list.append(property)
+                id_property_list.append(property.name)
 
         if id_type_count == 0:
             error_message = cfg.NO_ID_PROPERTY_ERROR % (entity.name)
             logging.error(error_message)
-            raise SemanticError(error_message, **get_location(entity), search_value=entity.name, err_type='id_property_error')
+            raise SemanticError(error_message, **get_location(entity), search_value=entity.name, err_type='no_id_property_error')
         elif id_type_count > 1:
-            last_id_property = id_property_list[-1]
-            error_message = cfg.MULTIPLE_ID_PROPERTIES_ERROR % (entity.name)
+            id_property_names = ', '.join(f'"{item}"' for item in id_property_list)
+            error_message = cfg.MULTIPLE_ID_PROPERTIES_ERROR % (entity.name, id_property_names)
             logging.error(error_message)
-            raise SemanticError(error_message, **get_location(last_id_property), search_value=last_id_property.name, err_type='id_property_error')
+            raise SemanticError(error_message, **get_location(entity), search_value=id_property_list, err_type='multiple_id_property_error')
         
     def check_empty_constructor(self, entity):
         """
@@ -385,7 +434,7 @@ class TextXGrammar():
         last_constructor = entity.constructors[-1]
         if len(empty_constructors) == 0:
             last_constructor = entity.constructors[-1]
-            last_constructor_name = self.create_constructor_name(last_constructor)
+            last_constructor_name = self.get_constructor_name(last_constructor)
             error_message = cfg.EMPTY_CONSTRUCTOR_ERROR % (entity.name)
             logging.error(error_message)
             raise SemanticError(error_message, **get_location(last_constructor), search_value=last_constructor_name, err_type='empty_constructor_error')
@@ -397,14 +446,14 @@ class TextXGrammar():
         """
         constructors = set()
         for constructor in entity.constructors:
-            constructor_name = self.create_constructor_name(constructor)
+            constructor_name = self.get_constructor_name(constructor)
             if constructor_name in constructors:
                 error_message = cfg.UNIQUE_CONSTRUCTORS_ERROR % (constructor_name, entity.name)
                 logging.error(error_message)
                 raise SemanticError(error_message, **get_location(constructor), search_value=constructor_name, err_type='unique_constructors_error')
             constructors.add(constructor_name)
 
-    def check_unique_methods(entity):
+    def check_unique_methods(self, entity):
         """
         Check if the methods are unique within a class.
         Raise a SemanticError if a method is not unique.
@@ -420,7 +469,7 @@ class TextXGrammar():
                 raise SemanticError(error_message, **get_location(method), search_value=method_name, err_type='unique_methods_error')
             methods.add(method_name)
 
-    # PROPERTY VARIABLE UPDATE
+    # PROPERTY FUNCTIONS
     def add_variables_to_property(property):
         """
         Add necessary variables to the property.
@@ -435,8 +484,8 @@ class TextXGrammar():
         Check if the property name is a valid Java variable name.
         Raise a SemanticError if the property name is not valid.
         """
-        if not utils.check_value_regex(cfg.JAVA_VARIABLE_NAME_REGEX, property.name):
-            error_message = cfg.PROPERTY_NAME_ERROR % (property.name, cfg.JAVA_PROPERTY_NAME_ERROR)
+        if not utils.check_value_regex(cfg.JAVA_PROPERTY_AND_METHOD_NAME_REGEX, property.name):
+            error_message = cfg.PROPERTY_NAME_ERROR % (property.name, cfg.JAVA_PROPERTY_AND_METHOD_NAME_ERROR)
             logging.error(error_message)
             raise SemanticError(error_message, **get_location(property), search_value=property.name, err_type='property_name_error')
         
@@ -534,9 +583,9 @@ class TextXGrammar():
             logging.error(error_message)
             raise SemanticError(error_message, **get_location(property.encapsulation), search_value=search_values, err_type='constant_and_encapsulation_error')
 
-    def check_constant_property_value(self, property):
+    def check_value_of_constant_property(self, property):
         """
-        Checks the constant value of a property based on its type.
+        Check if the constant value of a property is valid for its type.
         Raise a SemanticError if the value is invalid.
         """
         try:
@@ -556,7 +605,7 @@ class TextXGrammar():
             
             # Check list elements
             if property.list_type:
-                self.check_list_elements(property, value)
+                self.check_value_of_list_elements(property, value)
 
         except SemanticError as e:
             raise
@@ -564,9 +613,9 @@ class TextXGrammar():
             logging.error(f'Error checking property "{property.name}": {str(e)}')
             raise
 
-    def check_list_elements(property, value):
+    def check_value_of_list_elements(property, value):
         """
-        Checks each element in a list type property.
+        Check if the each value of a list type property is valid for its type.
         Raise a SemanticError if an element is invalid.
         """
         list_type = property.list_type.type
@@ -574,7 +623,7 @@ class TextXGrammar():
         logging.debug(f'Checking list elements for property "{property.name}" with type "{property_type}" and value "{value}"')
         elements = value.strip('[]').split(',')
         for element in elements:
-            element = element.strip()  # Remove surrounding whitespace
+            element = element.strip()
             response = utils.check_property_value(property_type, element)
             if response is not cfg.OK:
                 search_value = [property.name, element]
@@ -582,8 +631,8 @@ class TextXGrammar():
                 logging.error(error_message)
                 raise SemanticError(error_message, **get_location(property), search_value=search_value, err_type='list_value_error')
 
-    # CONSTRUCTOR VARIABLE UPDATE
-    def create_constructor_name(constructor):
+    # CONSTRUCTOR FUNCTIONS
+    def get_constructor_name(constructor):
         """
         Creates a constructor name from the provided constructor object.
         """
@@ -625,3 +674,16 @@ class TextXGrammar():
                 error_message = cfg.CONSTRUCTOR_CONSTANT_PROPERTY_ERROR % (constructor_property.name)
                 logging.error(error_message)
                 raise SemanticError(error_message, **get_location(constructor), search_value=constructor_property.name, err_type='constructor_constant_property_error')
+
+    # METHOD SEMANTIC CHECKS
+    def check_method_name(self, method):
+        """
+        Check if the method name is a valid Java method name.
+        Raise a SemanticError if the method name is invalid.
+        """
+        if not utils.check_value_regex(cfg.JAVA_PROPERTY_AND_METHOD_NAME_REGEX, method.name):
+            method_properties = ', '.join(property.name for property in method.property_list)
+            method_name = f'{method.name}({method_properties})' if method_properties else method.name
+            error_message = cfg.METHOD_NAME_ERROR % (method.name, cfg.JAVA_PROPERTY_AND_METHOD_NAME_ERROR)
+            logging.error(error_message)
+            raise SemanticError(error_message, **get_location(method), search_value=method_name, err_type='method_name_error')

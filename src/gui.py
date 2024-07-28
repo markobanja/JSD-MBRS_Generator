@@ -304,8 +304,9 @@ class MainWindowGUI:
                     response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["OK"]} Successfully executed generate action.'
                 else:
                     response_color = ERROR_COLOR
-                    response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(response.error_msg)}'
                     self.set_error_color(response)
+                    response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(response.error_msg)}'
+                    logging.error(f'Error during syntax checks: {response.error_msg}')
                 self.console_output.config(text=response_text, fg=response_color)
             except Exception as e:
                 error_message = f'Failed to generate metamodel and model: {str(e)}'
@@ -655,10 +656,13 @@ class MainWindowGUI:
         penultimate_line_number = response.error.line - 2
         previous_line_number = response.error.line - 1
         current_line_number = response.error.line
+        error_message = response.error_msg
 
         if is_near_part_in_line(previous_line_number):
             start_index = f'{previous_line_number}.0'
             end_index = f'{previous_line_number}.end'
+            response.error_msg = error_message.replace(str(current_line_number), str(previous_line_number))
+            response.error.line = previous_line_number
             logging.debug(f'Highlighting previous line: "{previous_line_number}"')
         elif is_near_part_in_line(current_line_number):
             start_index = f'{current_line_number}.0'
@@ -667,6 +671,8 @@ class MainWindowGUI:
         elif is_near_part_in_line(penultimate_line_number):
             start_index = f'{penultimate_line_number}.0'
             end_index = f'{penultimate_line_number}.end'
+            response.error_msg = error_message.replace(str(current_line_number), str(penultimate_line_number))
+            response.error.line = penultimate_line_number
             logging.debug(f'Highlighting current line: "{penultimate_line_number}"')
         self.remove_tags_text_editor(start_index, end_index)
         self.text_editor.tag_configure(ERROR_COLOR, foreground=ERROR_COLOR)
@@ -690,8 +696,8 @@ class MainWindowGUI:
         """
         Apply the semantic error color to the every specified search value in the text editor (check only the line where the error occurred).
         """
-        logging.debug(f'Applying semantic error color for {search_value} in line {response.error.line}')
-        error_line = response.error.line
+        error_line = self.handle_error_type(response, search_value)
+        logging.debug(f'Applying semantic error color for {search_value} in line {error_line}')
         line_text = self.text_editor.get(f'{error_line}.0', f'{error_line}.end')
         if search_value in line_text:
             start_index = 0
@@ -705,6 +711,33 @@ class MainWindowGUI:
                 self.text_editor.tag_configure(ERROR_COLOR, foreground=ERROR_COLOR)
                 self.text_editor.tag_add(ERROR_COLOR, f'{error_line}.{start_index}', f'{error_line}.{end_index}')
                 start_index += len(search_value)  # Move to the next occurrence
+
+    def handle_error_type(self, response, search_value):
+        """
+        Handle the error type and return the line where the error occurred.
+        """
+        error_line = response.error.line
+        error_type = response.error.err_type
+        logging.debug(f'Handling error type: "{error_type}"')
+        if error_type in ['database_name_error', 'database_username_error', 'database_password_error', 'multiple_id_property_error']:
+            error_line = self.find_line_containing_search_value(response, search_value)
+        logging.debug(f'Error line updated to: {error_line}')
+        return error_line
+
+    def find_line_containing_search_value(self, response, search_value):
+        """
+        Find the line number containing the specified search value.
+        """
+        line = response.error.line
+        while True:
+            logging.debug(f'Searching for "{search_value}" in line {line}')
+            line_text = self.text_editor.get(f'{line}.0', f'{line}.end')
+            if search_value in line_text:
+                logging.debug(f'Found "{search_value}" in line {line}')
+                response.error_msg = response.error_msg.replace(str(response.error.line), str(line))
+                response.error.line = line
+                return line
+            line += 1
 
     def remove_tags_text_editor(self, start_index, end_index):
         """
