@@ -169,6 +169,32 @@ def add_punctuation(text, punctuation='!'):
     logging.debug(f'Added punctuation: "{punctuation}" to text: "{text}"')
     return text
 
+def create_syntax_error_message(error):
+    """
+    Creates a message for a syntax error.
+    """
+    try:
+        logging.debug(f'Parsing syntax error message: "{error.message}"')
+        pattern = cfg.SYNTAX_ERROR_MESSAGE_REGEX
+        expected_value, found_value = re.match(pattern, error.message, re.DOTALL).group(1, 2)
+        expected_value = expected_value.strip().replace('\'', '"')
+        found_value = extract_between_quotes(found_value.strip())
+        near_part, found_part = found_value.split('*', 1)
+        message = f'at position ({error.line},{error.col}): Syntax error near "{near_part.strip()}". {expected_value} but found "{found_part.strip()}"!'
+        logging.debug(f'Parsed syntax error message: "{message}"')
+        return message
+    except Exception as e:
+        logging.debug(f'Failed to parse syntax error message: "{e}"')
+        return error.message
+    
+def extract_between_quotes(text):
+    """
+    Find and return content between single quotes.
+    """
+    logging.debug(f'Extracting content between quotes from text: "{text}"')
+    match = re.search(cfg.QUOTE_REGEX, text)
+    return match.group(1) if match else None
+
 def check_value_regex(regex_pattern, value_to_check):
     """
     Checks if the provided value matches the provided regex pattern.

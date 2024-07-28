@@ -68,6 +68,8 @@ TIME_REGEX = r'%H:%M:%S'
 DATETIME_REGEX = r'%Y-%m-%d %H:%M:%S'
 JAVA_CLASS_NAME_REGEX = r'^[A-Z][a-zA-Z0-9_$]*$'
 JAVA_VARIABLE_NAME_REGEX = r'^[a-zA-Z_$][a-zA-Z\d_$]*$'
+SYNTAX_ERROR_MESSAGE_REGEX = r'(.*?)at position.*?=>(.*)'
+QUOTE_REGEX = r"'(.*?)'"
 
 # PROPERTY TYPES
 # IDTypes
@@ -112,21 +114,21 @@ ERROR_MESSAGES = {
     LONG: f'{LONG.capitalize()} value must be a number between -9223372036854775808 and 9223372036854775807 that ends with "L"',
     DOUBLE: f'{DOUBLE.capitalize()} value must be a float or an integer number that ends with "D"',
     BOOLEAN: f'{BOOLEAN.capitalize()} value must be "true" or "false"',
-
+    
     # WrapperDataTypes
     INTEGER_W: f'{INTEGER_W.capitalize()} value must be a number between -2147483648 and 2147483647',
     FLOAT_W: f'{FLOAT_W.capitalize()} value must be a float or an integer number that ends with "F"',
     DOUBLE_W: f'{DOUBLE_W.capitalize()} value must be a float or an integer number that ends with "D"',
     BOOLEAN_W: f'{BOOLEAN_W.capitalize()} value must be "true" or "false"',
-
+    
     # OtherDataTypes
     STRING: f'{STRING.capitalize()} value must be surrounded by double quotes - ""',
-
+    
     # DateTypes
     DATE: f'{DATE.capitalize()} value must be in YYYY-MM-DD format',
     TIME: f'{TIME.capitalize()} value must be in HH:MM:SS format',
     DATETIME: f'{DATETIME.capitalize()} value must be in YYYY-MM-DD HH:MM:SS format',
-
+    
     # ListTypes
     ARRAY: f'{ARRAY.capitalize()} type must start with "[" and end with "]"',
     LINKED: f'{LINKED.capitalize()} type must start with "[" and end with "]"',

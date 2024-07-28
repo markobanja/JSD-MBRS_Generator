@@ -41,9 +41,8 @@ class TextXGrammar():
             self.set_model(self, model)
             return cfg.OK
         except TextXSyntaxError as e:
-            # TODO: create syntax error message handler to display better error messages
-            error_msg = f'at position ({str(e.line)},{str(e.col)}): {str(e.message)}'
-            logging.error(f'Error during syntax checks: {str(e.message)}')
+            error_msg = utils.create_syntax_error_message(e)
+            logging.error(f'Error during syntax checks: {error_msg}')
             return error_msg
         except TextXSemanticError as e:
             error_msg = f'at position ({str(e.line)},{str(e.col)}): {str(e.message)}'
@@ -53,7 +52,7 @@ class TextXGrammar():
             error_msg = f'{str(e)}'
             logging.error(error_msg)
             return error_msg
-    
+
     @classmethod
     def export(self, project_path):
         """
