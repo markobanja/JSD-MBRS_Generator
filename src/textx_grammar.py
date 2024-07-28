@@ -2,7 +2,7 @@ import logging
 import subprocess
 
 import pydot
-from textx import metamodel_from_file
+from textx import TextXSyntaxError, TextXSemanticError, metamodel_from_file, get_location
 from textx.export import PlantUmlRenderer, metamodel_export, model_export
 
 import src.config as cfg
@@ -40,6 +40,15 @@ class TextXGrammar():
             self.set_metamodel(self, metamodel)
             self.set_model(self, model)
             return cfg.OK
+        except TextXSyntaxError as e:
+            # TODO: create syntax error message handler to display better error messages
+            error_msg = f'at position ({str(e.line)},{str(e.col)}): {str(e.message)}'
+            logging.error(f'Error during syntax checks: {str(e.message)}')
+            return error_msg
+        except TextXSemanticError as e:
+            error_msg = f'at position ({str(e.line)},{str(e.col)}): {str(e.message)}'
+            logging.error(f'Error during semantic checks: {str(e.message)}')
+            return error_msg
         except Exception as e:
             error_msg = f'{str(e)}'
             logging.error(error_msg)
@@ -85,6 +94,8 @@ class TextXGrammar():
         
         # Register object processors to validate (or alter) the object being constructed
         metamodel.register_obj_processors({
+            'EntityModel': lambda model: self.model_processor(self, model),
+            'Entity': lambda entity: self.entity_processor(self, entity),
             'Property': lambda property: self.property_processor(self, property),
         })
 
@@ -218,47 +229,156 @@ class TextXGrammar():
             logging.error(f'Failed to convert PlantUML file "{file_name}" to PNG: {str(e)}')
             raise
 
+    def model_processor(self, model):
+        """
+        Perform semantic checks on the model.
+        """
+        logging.info(f'Starting semantic checks for JSD-MBRS Generator "{model.__class__.__name__}"')
+        self.check_unique_class_names(model)
+        logging.info(f'Successfully finished semantic checks for JSD-MBRS Generator "{model.__class__.__name__}"')
+
+    def entity_processor(self, entity):
+        """
+        Perform semantic checks on each class in the model.
+        """
+        logging.info(f'Starting semantic checks for class "{entity.name}"')
+        self.check_class_name(entity)
+        self.check_unique_property_names(entity)
+        self.check_id_property(entity)
+        self.check_empty_constructor(entity)
+        self.check_unique_constructors(self, entity)
+        self.check_unique_methods(entity)
+        logging.info(f'Successfully finished semantic checks for class "{entity.name}"')
+
     def property_processor(self, property):
-        self.validate_constant_property_value(self, property)
-
-    def validate_constant_property_value(self, property):
         """
-        Validates the constant value of a property based on its type.
+        Perform semantic checks on each property in the model.
         """
-        try:
-            # Skip validation if property is not constant
-            if not property.constant:
-                return
+        logging.info(f'Updating variables for property "{property.name}"')
+        self.add_variables_to_property(property)
+        logging.info(f'Starting semantic checks for property "{property.name}"')
 
-            validation_type = property.list_type.type if property.list_type else property.property_type.type
-            value = property.property_value.value.rstrip()
-
-            logging.debug(f'Validating property "{property.name}" with type "{validation_type}" and value "{value}"')
-            response = utils.validate_property_value(validation_type, value)
-            if response is not cfg.OK:
-                raise ValueError(f'Invalid value "{value}" for property "{property.name}" of type "{validation_type}" ({response})!')
-
-            # Validate list elements
-            if property.list_type:
-                self.validate_list_elements(property, value)
-
-        except ValueError as e:
-            logging.error(f'Validation error for property "{property.name}": {str(e)}')
-            raise
-        except Exception as e:
-            logging.error(f'Error validating property "{property.name}": {str(e)}')
-            raise
-
-    def validate_list_elements(property, value):
+    # MODEL SEMANTIC CHECKS
+    def check_unique_class_names(model):
         """
-        Validates each element in a list type property.
+        Check if class names are unique.
+        Raise a TextXSemanticError if a class name is not unique.
         """
-        list_type = property.list_type.type
-        property_type = property.property_type.type
-        logging.debug(f'Validating list elements for property "{property.name}" with type "{property_type}" and value "{value}"')
-        elements = value.strip('[]').split(', ')
-        for element in elements:
-            response = utils.validate_property_value(property_type, element)
-            if response is not cfg.OK:
-                logging.error(f'Invalid value "{element}" in "{value}" {list_type} for property "{property.name}" of type "{property_type}" ({response})!')
-                raise ValueError(f'Invalid value "{element}" in "{value}" {list_type} for property "{property.name}" of type "{property_type}" ({response})!')
+        class_names = set()
+        for entity in model.entities:
+            if entity.name in class_names:
+                error_message = f'Class name "{entity.name}" already exists! Each class name must be unique.'
+                logging.error(error_message)
+                raise TextXSemanticError(error_message, **get_location(entity), err_type='unique_class_names_error')
+            class_names.add(entity.name)
+
+    # CLASS SEMANTIC CHECKS
+    def check_class_name(entity):
+        """
+        Check if the class name is a valid Java class name.
+        Raise a TextXSemanticError if the class name is not valid.
+        """
+        if not utils.check_value_regex(cfg.JAVA_CLASS_NAME_REGEX, entity.name):
+            error_message = f'Class name "{entity.name}" is not a valid Java class name! {cfg.JAVA_CLASS_NAME_ERROR}'
+            logging.error(error_message)
+            raise TextXSemanticError(error_message, **get_location(entity), err_type='class_name_error')
+        
+    def check_unique_property_names(entity):
+        """
+        Check if property names are unique within a class.
+        Raise a TextXSemanticError if a property name is not unique.
+        """
+        property_names = set()
+        for property in entity.properties:
+            if property.name in property_names:
+                error_message = f'Property name "{property.name}" already exists in the "{entity.name}" class! Each property name must be unique within a class.'
+                logging.error(error_message)
+                raise TextXSemanticError(error_message, **get_location(property), err_type='unique_property_names_error')
+            property_names.add(property.name)
+
+    def check_id_property(entity):
+        """
+        Check if the class has a primary key property and if it is unique'.
+        Raise a TextXSemanticError if the primary key property is not present or if it is not unique.
+        """
+        id_type_count = 0
+        for property in entity.properties:
+            if property.property_type.primary_key:
+                id_type_count += 1
+
+        if id_type_count == 0:
+            error_message = f'There is no ID property in the {entity.name} class! An ID property is required.'
+            logging.error(error_message)
+            raise TextXSemanticError(error_message, **get_location(entity), err_type='id_property_error')
+        elif id_type_count > 1:
+            error_message = f'{entity.name} class has more than one ID property! Only one ID property is allowed.'
+            logging.error(error_message)
+            raise TextXSemanticError(error_message, **get_location(entity), err_type='id_property_error')
+        
+    def check_empty_constructor(entity):
+        """
+        Check if the empty constructor is provided.
+        Raise a TextXSemanticError if the empty constructor is not provided.
+        """
+        empty_constructors = [constructor for constructor in entity.constructors if constructor.empty_constructor]
+        last_constructor = entity.constructors[-1]
+        if len(empty_constructors) == 0:
+            error_message = f'There is no empty constructor in the "{entity.name}" class! An empty constructor is required.'
+            logging.error(error_message)
+            raise TextXSemanticError(error_message, **get_location(last_constructor), err_type='empty_constructor_error')
+        
+    def check_unique_constructors(self, entity):
+        """
+        Check if the constructors are unique within a class.
+        Raise a TextXSemanticError if a constructor is not unique.
+        """
+        constructors = set()
+        for constructor in entity.constructors:
+            constructor_name = self.create_constructor_name(constructor)
+            if constructor_name in constructors:
+                error_message = f'The specific constructor "{constructor_name}" already exists in the "{entity.name}" class! Each constructor must be unique within a class.'
+                logging.error(error_message)
+                raise TextXSemanticError(error_message, **get_location(constructor), err_type='unique_constructors_error')
+            constructors.add(constructor_name)
+
+    def check_unique_methods(entity):
+        """
+        Check if the methods are unique within a class.
+        Raise a TextXSemanticError if a method is not unique.
+        """
+        methods = set()
+        for method in entity.methods:
+            method_properties = ', '.join(property.name for property in method.property_list)
+            method_name = f'{method.name}({method_properties})'
+            if method_name in methods:
+                additional_text = f' with properties "({method_properties})"' if method_properties else ''
+                error_message = f'The method "{method.name}"{additional_text} already exists in the "{entity.name}" class! Each method within a class must be unique, defined by both name and properties.'
+                logging.error(error_message)
+                raise TextXSemanticError(error_message, **get_location(method), err_type='unique_methods_error')
+            methods.add(method_name)
+
+    # PROPERTY VARIABLE UPDATE
+    def add_variables_to_property(property):
+        """
+        Add necessary variables to the property.
+        """
+        property_type_name = property.property_type.__class__.__name__
+        if property_type_name == 'Entity':
+            property.property_type.primary_key = False
+
+    def create_constructor_name(constructor):
+        """
+        Creates a constructor name from the provided constructor object.
+        """
+        logging.debug(f'Creating constructor name from the provided constructor')
+        if constructor.default_constructor:
+            # A default constructor contains all non-constant properties from the class
+            constructor.property_list = [property for property in constructor.parent.properties if not property.constant]
+            return "default"
+        elif constructor.empty_constructor:
+            return "empty"
+        elif constructor.property_list:
+            constructor_property_names = ', '.join(property.name for property in constructor.property_list)
+            return f"[{constructor_property_names}]"
+        else:
+            return None

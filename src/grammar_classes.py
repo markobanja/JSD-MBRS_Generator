@@ -6,14 +6,15 @@ class PropertyType:
     """
     Class representing a property type.
     """
-    def __init__(self, name, property_type, default_value):
+    def __init__(self, name, property_type, default_value, primary_key=False):
         """
         Constructor for the PropertyType class.
         """
         self.name = name
         self.type = property_type
         self.default_value = default_value
-        logging.debug(f'Created "{self.name}" class with type "{self.type}" and default value "{self.default_value}"')
+        self.primary_key = primary_key
+        logging.debug(f'Creating PropertyType object with name: "{self.name}", type: "{self.type}", default_value: "{self.default_value}", primary_key: "{self.primary_key}"')
 
     def __str__(self):
         """
@@ -40,8 +41,8 @@ class IDType(PropertyType):
     """
     Class representing an ID type.
     """
-    def __init__(self, property_type, default_value=None):
-        super().__init__(self.__class__.__name__, property_type, default_value)
+    def __init__(self, property_type, default_value=None, primary_key=True):
+        super().__init__(self.__class__.__name__, property_type, default_value, primary_key)
 
 
 class DataType(PropertyType):
@@ -119,7 +120,6 @@ def get_type_builtins():
         cfg.BOOLEAN_W: WrapperDataType(cfg.BOOLEAN_W, 'null'),
 
         cfg.STRING: OtherDataType(cfg.STRING, ''),
-        cfg.CONSTANT: OtherDataType(cfg.CONSTANT, 'null'),
 
         cfg.DATE: DateType(cfg.DATE, '1970-01-01'),
         cfg.TIME: DateType(cfg.TIME, '00:00:00'),

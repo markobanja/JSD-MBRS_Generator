@@ -159,14 +159,26 @@ def add_punctuation(text, punctuation='!'):
     Adds punctuation to the end of a text string after removing any existing punctuation.
     """
     logging.debug(f'Adding punctuation: "{punctuation}" to text: "{text}"')
-    if text and text[-1] in string.punctuation:
+    if text.endswith('.'):
+        logging.debug('Text already ends with a period, no need to add punctuation')
+        return text
+    elif text and text[-1] in string.punctuation:
+        logging.debug('Removing existing punctuation from text')
         text = text[:-1]
     text += punctuation
+    logging.debug(f'Added punctuation: "{punctuation}" to text: "{text}"')
     return text
 
-def validate_property_value(property_type, property_value):
+def check_value_regex(regex_pattern, value_to_check):
     """
-    Validates if the provided value is appropriate for the given property type.
+    Checks if the provided value matches the provided regex pattern.
+    """
+    logging.debug(f'Checking if value "{value_to_check}" matches regex pattern "{regex_pattern}"')
+    return bool(re.match(regex_pattern, value_to_check))
+
+def check_property_value(property_type, property_value):
+    """
+    Checks if the provided value is appropriate for the given property type.
     """
     def error(message):
         """
@@ -174,25 +186,18 @@ def validate_property_value(property_type, property_value):
         """
         logging.debug(f'{message} ({property_type} type)')
         return message
-
-    def validate_datetime(date_str, format):
+    
+    def check_datetime(date_str, format):
         """
-        Validates if the provided string is a valid datetime in specific format.
+        Check if the provided string is a valid datetime in specific format.
         """
         try:
             datetime.strptime(date_str, format)
             return True
         except ValueError:
             return False
-
-    property_validation_rules = {
-        # IDTypes
-        cfg.ID: lambda value: isinstance(value, str),
-        cfg.IDENTIFIER: lambda value: isinstance(value, str),
-        cfg.UNIQUE_ID: lambda value: isinstance(value, str),
-        cfg.KEY: lambda value: isinstance(value, str),
-        cfg.PRIMARY_KEY: lambda value: isinstance(value, str),
-
+    
+    property_checking_rules = {
         # PrimitiveDataTypes
         cfg.BYTE: lambda value: cfg.OK if isinstance(int(value), int) and -128 <= int(value) <= 127 else error(cfg.ERROR_MESSAGES[cfg.BYTE]),
         cfg.SHORT: lambda value: cfg.OK if isinstance(int(value), int) and -32768 <= int(value) <= 32767 else error(cfg.ERROR_MESSAGES[cfg.SHORT]),
@@ -208,15 +213,14 @@ def validate_property_value(property_type, property_value):
         cfg.FLOAT_W: lambda value: cfg.OK if isinstance(float(value[:-1]), (int, float)) and value.upper().endswith('F') else error(cfg.ERROR_MESSAGES[cfg.FLOAT_W]),
         cfg.DOUBLE_W: lambda value: cfg.OK if isinstance(float(value[:-1]), (int, float)) and value.upper().endswith('D') else error(cfg.ERROR_MESSAGES[cfg.DOUBLE_W]),
         cfg.BOOLEAN_W: lambda value: cfg.OK if isinstance(value, str) and value.lower() in ('true', 'false') else error(cfg.ERROR_MESSAGES[cfg.BOOLEAN_W]),
-
+        
         # OtherDataTypes
         cfg.STRING: lambda value: cfg.OK if isinstance(value, str) and value.startswith('"') and value.endswith('"') else error(cfg.ERROR_MESSAGES[cfg.STRING]),
-        cfg.CONSTANT: lambda value: cfg.OK if isinstance(value, (str, int, float, bool)) else error(cfg.ERROR_MESSAGES[cfg.CONSTANT]),
 
         # DateTypes
-        cfg.DATE: lambda value: cfg.OK if isinstance(value, str) and validate_datetime(value, cfg.DATE_REGEX) else error(cfg.ERROR_MESSAGES[cfg.DATE]),
-        cfg.TIME: lambda value: cfg.OK if isinstance(value, str) and validate_datetime(value, cfg.TIME_REGEX) else error(cfg.ERROR_MESSAGES[cfg.TIME]),
-        cfg.DATETIME: lambda value: cfg.OK if isinstance(value, str) and validate_datetime(value, cfg.DATETIME_REGEX) else error(cfg.ERROR_MESSAGES[cfg.DATETIME]),
+        cfg.DATE: lambda value: cfg.OK if isinstance(value, str) and check_datetime(value, cfg.DATE_REGEX) else error(cfg.ERROR_MESSAGES[cfg.DATE]),
+        cfg.TIME: lambda value: cfg.OK if isinstance(value, str) and check_datetime(value, cfg.TIME_REGEX) else error(cfg.ERROR_MESSAGES[cfg.TIME]),
+        cfg.DATETIME: lambda value: cfg.OK if isinstance(value, str) and check_datetime(value, cfg.DATETIME_REGEX) else error(cfg.ERROR_MESSAGES[cfg.DATETIME]),
 
         # ListTypes
         cfg.ARRAY: lambda value: cfg.OK if isinstance(value, str) and value.startswith('[') and value.endswith(']') else error(cfg.ERROR_MESSAGES[cfg.ARRAY]),
@@ -225,12 +229,12 @@ def validate_property_value(property_type, property_value):
         cfg.SET: lambda value: cfg.OK if isinstance(value, str) and value.startswith('[') and value.endswith(']') else error(cfg.ERROR_MESSAGES[cfg.SET]),
     }
 
-    if property_type not in property_validation_rules:
+    if property_type not in property_checking_rules:
         logging.error(f'Unknown property type: "{property_type}"')
         raise ValueError(f"Unknown property type: {property_type}")
 
     try:
-        result = property_validation_rules[property_type](property_value)
+        result = property_checking_rules[property_type](property_value)
         logging.debug(f'"{property_value}" is a valid value for "{property_type}" type')
         return result
     except ValueError:
