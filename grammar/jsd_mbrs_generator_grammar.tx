@@ -1,0 +1,166 @@
+EntityModel:
+    'Database' '{'
+        database=Database
+    '}'
+    entities+=Entity
+;
+
+Database:
+    'driver: ' driver=Driver ','
+    'database name:' name=NamePattern
+    (',' credentials=Credentials)?
+;
+
+Credentials:
+    'username:' username=NamePattern ','
+    'password:' password=NamePattern
+;
+
+Entity:
+    (class_modifier=Modifier)? 'class' name=NamePattern '{'
+        properties+=Property
+        'Constructors' '{' 
+            constructors+=Constructors[',']
+        '}'
+        'Methods' '{'
+            (methods+=Methods[','])?
+        '}'
+        'toString:' to_string=YesNoValue
+    '}'
+;
+
+Driver:
+    'postgresql' | 'mysql' | 'sqlserver' | 'oracle'
+;
+
+Modifier:
+    'public' | 'abstract' | 'final' | ''
+;
+
+Property:
+    name=NamePattern ':' (constant?=Constant)? property_type=[Type] (list_type=[ListType])? (relationship=Relationship)? (encapsulation=Encapsulation)? (property_value=Value)? ';'
+;
+
+Constructors:
+    empty_constructor?='empty' | default_constructor?='default' | '[' property_list=[Property] (', ' property_list=[Property])* ']'
+;
+
+Methods:
+    VoidMethod | ReturnMethod
+;
+
+VoidMethod:
+    (static?='static')? 'void' name=NamePattern '(' (property_list=[Property] (', ' property_list=[Property])*)? ')'
+;
+
+ReturnMethod:
+    (static?='static')? method_type=[Type] name=NamePattern '(' (property_list=[Property] (', ' property_list=[Property])*)? ')'
+;
+
+Type:
+    IDType | DataType | DateType | Entity
+;
+
+IDType:
+    type=IDTypes
+;
+
+DataType:
+    PrimitiveDataType | WrapperDataType | OtherDataType
+;
+
+DateType:
+    type=DateTypes
+;
+
+PrimitiveDataType:
+    type=PrimitiveDataTypes
+;
+
+WrapperDataType:
+    type=WrapperDataTypes
+;
+
+OtherDataType:
+    type=OtherDataTypes
+;
+
+ListType:
+    type=ListTypes
+;
+
+IDTypes:
+    'id' | 'identifier' | 'uniqueId' | 'key' | 'primaryKey'
+;
+
+PrimitiveDataTypes:
+    'byte' | 'short' | 'char' | 'int' | 'float' | 'long' | 'double' | 'boolean'
+;
+
+WrapperDataTypes:
+    'Integer' | 'Float' | 'Double' | 'Boolean'
+;
+
+OtherDataTypes:
+    'string'
+;
+
+DateTypes:
+    'date' | 'time' | 'datetime'
+;
+
+ListTypes:
+    'array' | 'linked' | 'hashmap' | 'hashset' | 'treemap' | 'list'
+;
+
+YesNoValue:
+    'yes' | 'no'
+;
+
+Constant:
+    'constant' | 'const'
+;
+
+Relationship:
+    '1-1' | '1-n' | 'n-1' | 'n-n'
+;
+
+Encapsulation:
+    '(' EncapsulationOptions ')'
+;
+
+EncapsulationOptions:
+    GetterSetterOption | SetterGetterOption
+;
+
+GetterSetterOption:
+    getter?=AccessorMethod (', ' setter?=MutatorMethod)?
+;
+
+SetterGetterOption:
+    setter?=MutatorMethod (',' getter?=AccessorMethod)?
+;
+
+AccessorMethod:
+    'getter' | 'get'
+;
+
+MutatorMethod:
+    'setter' | 'set'
+;
+
+Value:
+    '=' value=ValuePattern
+;
+
+NamePattern:
+    /[^:(\n]*\b/
+;
+
+ValuePattern:
+    /[^\/;\r\n]+/
+;
+
+Comment:
+    /\/\/.*$/
+;

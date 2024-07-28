@@ -1,0 +1,110 @@
+Database {
+    driver: postgresql
+    database name: jsd_mbrs
+    username: postgres
+    password: root
+}
+
+public class Person {
+    idPerson: id (get, set);
+    firstName: string (get, set);
+    lastName: string (get, set);
+    address: Address 1-1 (get, set);
+    age: int (get, set);
+    weight: float (get, set);
+    height: double (get, set);
+    bloodType: char (get, set);
+    isEmployee: boolean (get, set);
+    byteConstant: constant byte (get) = 127;
+    shortConstant: constant short (get) = -32768;
+    longConstant: constant long (get) = 0L;
+    stringConstant: constant string (get) = "00";
+    intConstant: constant int (get) = 0;
+    floatConstant: constant float (get) = 00f;
+    doubleConstant: constant double (get) = 00d;
+    booleanConstant: constant boolean (get) = true;
+    charConstant: constant char (get) = 'c';
+    employmentNumber: constant int (get) = 123; // this is a comment
+    school: School 1-1 (get, set);
+    birthday: date (get, set);
+    timeFormat: time (get, set);
+    dateOfEmployment: datetime (get, set);
+    jobArray: string array (get, set);
+    positionLinked: string linked (get, set);
+    testList: int list (get, set);
+    byteVariable: byte (get, set);
+    shortVariable: short (get, set);
+    longVariable: long (get, set);
+    testInteger: Integer;
+    testIntegerConstant: constant Integer (get) = 123; // this is a comment
+    testFloat: Float;
+    testDouble: Double;
+    testBoolean: Boolean;
+
+    Constructors {
+        default
+        empty
+        [firstName, lastName] // this is a comment
+        [firstName, lastName, address]
+        [firstName, lastName, address, age]
+        [age]
+    }
+    Methods {
+        void methodName (school, jobArray)
+        static void staticMethodName (school, jobArray)
+        int newName (lastName, firstName)
+        boolean booleanMethod 
+        string stringMethod
+        float floatMethod
+        double doubleMethod
+        char charMethod
+        date dateMethod
+        time timeMethod
+        datetime datetimeMethod
+        byte byteMethod
+        short shortMethod
+        long longMethod
+        static void methodName (jobArray, school)
+    }
+    toString: yes
+}
+
+public class Address {
+    idAddress: id (get, set);
+    street: string;
+    number: int;
+    city: string;
+    country: string;
+    persons: Person list 1-n (get, set);
+
+    Constructors {
+        default
+    }
+    Methods {}
+    toString: no
+}
+
+public class School {
+    idSchool: id (get, set);
+    street: string (get, set);
+    number: int (get, set);
+
+    Constructors {
+        empty
+        default
+    }
+    Methods {}
+    toString: no
+}
+
+public class Grade {
+    idGrade: id (get, set);
+    street: string (get, set);
+    number: int (get, set);
+
+    Constructors {
+        default
+    }
+    Methods {}
+    toString: yes
+}
