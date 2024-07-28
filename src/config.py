@@ -48,6 +48,7 @@ HELP_FILE = 'help.txt'
 # Other
 OK = 'OK'
 WARNING = 'WARNING'
+ERROR = 'ERROR'
 DOT_FILE_EXTENSION = '.dot'
 PLANTUML_FILE_EXTENSION = '.pu'
 PNG_FILE_EXTENSION = '.png'
@@ -55,12 +56,18 @@ JSD_MBRS_GENERATOR_EXTENSION = '.jsdmbrs'
 METAMODEL_NAME = 'metamodel'
 MODEL_NAME = f'model{DOT_FILE_EXTENSION}'
 
+# CUSTOM ERROR MESSAGES
+JAVA_CLASS_NAME_ERROR = 'To create a valid Java class name, start with an uppercase letter, followed by letters, digit, dollar signs, or underscores. No spaces or special characters like @, !, # are allowed.'
+JAVA_VARIABLE_NAME_ERROR = 'To create a valid Java variable name, start with a letter, dollar sign, or underscore, followed by letters, digits, dollar signs, or underscores. No spaces or special characters like @, !, # are allowed.'
+
 # REGEX
 PLANTUML_REGEX = r'^plantuml-\d+\.\d+\.\d+\.jar$'
 JSD_MBRS_GENERATOR_REGEX = r"\w+\.jsdmbrs$"
 DATE_REGEX = r'%Y-%m-%d'
 TIME_REGEX = r'%H:%M:%S'
 DATETIME_REGEX = r'%Y-%m-%d %H:%M:%S'
+JAVA_CLASS_NAME_REGEX = r'^[A-Z][a-zA-Z0-9_$]*$'
+JAVA_VARIABLE_NAME_REGEX = r'^[a-zA-Z_$][a-zA-Z\d_$]*$'
 
 # PROPERTY TYPES
 # IDTypes
@@ -85,7 +92,6 @@ DOUBLE_W = 'Double'
 BOOLEAN_W = 'Boolean'
 # OtherDataTypes
 STRING = 'string'
-CONSTANT = 'constant'
 # DateTypes
 DATE = 'date'
 TIME = 'time'
@@ -115,7 +121,6 @@ ERROR_MESSAGES = {
 
     # OtherDataTypes
     STRING: f'{STRING.capitalize()} value must be surrounded by double quotes - ""',
-    CONSTANT: f'{CONSTANT.capitalize()} value must be an int, float, string, or boolean',
 
     # DateTypes
     DATE: f'{DATE.capitalize()} value must be in YYYY-MM-DD format',

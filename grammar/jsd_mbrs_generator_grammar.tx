@@ -13,7 +13,7 @@ Database:
 ;
 
 Entity:
-    (class_modifier=Modifier)? 'class' name=ID '{'
+    (class_modifier=Modifier)? 'class' name=NamePattern '{'
         properties+=Property
         'Constructors' '{' 
             constructors+=Constructors
@@ -34,7 +34,7 @@ Modifier:
 ;
 
 Property:
-    name=ID ':' (constant?='constant')? property_type=[Type] (list_type=[ListType])? (relationship=Relationship)? (encapsulation=Encapsulation)? (property_value=Value)? ';'
+    name=NamePattern ':' (constant?=Constant)? property_type=[Type] (list_type=[ListType])? (relationship=Relationship)? (encapsulation=Encapsulation)? (property_value=Value)? ';'
 ;
 
 Constructors:
@@ -98,7 +98,7 @@ WrapperDataTypes:
 ;
 
 OtherDataTypes:
-    'string' | 'constant'
+    'string'
 ;
 
 DateTypes:
@@ -106,11 +106,15 @@ DateTypes:
 ;
 
 ListTypes:
-    'array' | 'linked list' | 'list' | 'set'
+    'array' | 'linked' | 'list' | 'set'
 ;
 
 YesNoValue:
     'yes' | 'no'
+;
+
+Constant:
+    'constant' | 'const'
 ;
 
 Relationship:
@@ -118,19 +122,43 @@ Relationship:
 ;
 
 Encapsulation:
-    '(' EncapsulationOptions? ')'
+    '(' EncapsulationOptions ')'
 ;
 
 EncapsulationOptions:
-    (get='get' ',' set='set') | (get='get') | (set='set')
+     GetSetOption | SetGetOption
+;
+
+GetSetOption:
+    get?=AccessorMethod (', ' set?=MutatorMethod)?
+;
+
+SetGetOption:
+    set?=MutatorMethod (',' get?=AccessorMethod)?
+;
+
+AccessorMethod:
+    'getter' | 'get'
+;
+
+MutatorMethod:
+    'setter' | 'set'
 ;
 
 Value:
-    '=' value=/[^\/;\r\n]+/
+    '=' value=ValuePattern
 ;
 
 DatabasePattern:
     /[a-zA-Z_\r\n]+/
+;
+
+NamePattern:
+    /[^:\n]*\b/
+;
+
+ValuePattern:
+    /[^\/;\r\n]+/
 ;
 
 Comment:
