@@ -126,15 +126,15 @@ Encapsulation:
 ;
 
 EncapsulationOptions:
-    GetSetOption | SetGetOption
+    GetterSetterOption | SetterGetterOption
 ;
 
-GetSetOption:
-    get?=AccessorMethod (', ' set?=MutatorMethod)?
+GetterSetterOption:
+    getter?=AccessorMethod (', ' setter?=MutatorMethod)?
 ;
 
-SetGetOption:
-    set?=MutatorMethod (',' get?=AccessorMethod)?
+SetterGetterOption:
+    setter?=MutatorMethod (',' getter?=AccessorMethod)?
 ;
 
 AccessorMethod:

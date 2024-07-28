@@ -1,11 +1,10 @@
+import logging
 import re
 import string
-import logging
 from datetime import datetime
-
-from pathlib import Path
 from os import getcwd, listdir, makedirs
-from os.path import exists, isdir, basename, commonpath
+from os.path import basename, commonpath, exists, isdir
+from pathlib import Path
 
 import src.config as cfg
 
@@ -180,11 +179,27 @@ def create_syntax_error_message(error):
         expected_value = expected_value.strip().replace('\'', '"')
         found_value = extract_between_quotes(found_value.strip())
         near_part, found_part = found_value.split('*', 1)
-        message = f'at position ({error.line},{error.col}): Syntax error near "{near_part.strip()}". {expected_value} but found "{found_part.strip()}"!'
+        near_part = near_part.strip()
+        found_part = found_part.strip()
+        message = f'at position ({error.line},{error.col}): Syntax error near "{near_part}". {expected_value} but found "{found_part}"!'
         logging.debug(f'Parsed syntax error message: "{message}"')
-        return message
+        return message, near_part, found_part
     except Exception as e:
         logging.debug(f'Failed to parse syntax error message: "{e}"')
+        return error.message
+    
+def get_unknown_object_name(error):
+    """
+    Extracts the unknown object name from the error message.
+    """
+    try:
+        logging.debug(f'Parsing Unknown object error message: "{error.message}"')
+        pattern = cfg.UNKNOWN_OBJECT_ERROR_MESSAGE_REGEX
+        unknown_object, class_name = re.match(pattern, error.message, re.DOTALL).group(1, 2)
+        logging.debug(f'Parsed Unknown object: "{unknown_object}", class name: "{class_name}"')
+        return unknown_object
+    except Exception as e:
+        logging.debug(f'Failed to parse Unknown object error message: "{e}"')
         return error.message
     
 def extract_between_quotes(text):
@@ -202,8 +217,9 @@ def extract_rule_defined_signs_regex(content):
     logging.debug(f'Extracting rule defined signs from text editor content')
     rule_defined_sign_pattern = re.compile(cfg.RULE_DEFINED_SIGNS_REGEX)
     rule_defined_signs = [match.group(0) for match in rule_defined_sign_pattern.finditer(content)]
-    logging.debug(f'Found rule defined signs: "{rule_defined_signs}"')
-    return rule_defined_signs
+    unique_signs = list(set(rule_defined_signs))  # Convert to set and back to list for uniqueness
+    logging.debug(f'Found unique rule defined signs: "{unique_signs}"')
+    return unique_signs
 
 def extract_class_names_regex(content):
     """
@@ -221,7 +237,8 @@ def extract_property_values_regex(content):
     """
     logging.debug(f'Extracting property values from text editor content')
     property_pattern = re.compile(cfg.PROPERTY_VALUE_REGEX)
-    property_values = [match.group(1) for match in property_pattern.finditer(content)]
+    group_values = [match.group(1) for match in property_pattern.finditer(content)]
+    property_values = [value for value in group_values if value]  # Remove empty values
     logging.debug(f'Found property values: "{property_values}"')
     return property_values
 

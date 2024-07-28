@@ -22,7 +22,7 @@ COLORS = {
     'encapsulation_defined': (78, 141, 193),
     'class_name': (131, 96, 63),
     'comment': (131, 143, 154),
-    'property_value': (201, 97, 105),
+    'property_value': (210, 137, 137),
 }
 CONSOLE_LOG_LEVEL_TAGS = {
     'OK': '[OK]',
@@ -76,8 +76,32 @@ METAMODEL_NAME = 'metamodel'
 MODEL_NAME = f'model{DOT_FILE_EXTENSION}'
 
 # CUSTOM ERROR MESSAGES
+UNIQUE_CLASS_NAMES_ERROR = 'Class name "%s" already exists! Each class name must be unique.'
+CLASS_NAME_ERROR = 'Class name "%s" is not a valid Java class name! %s'
 JAVA_CLASS_NAME_ERROR = 'To create a valid Java class name, start with an uppercase letter, followed by letters, digit, dollar signs, or underscores. No spaces or special characters like @, !, # are allowed.'
-JAVA_VARIABLE_NAME_ERROR = 'To create a valid Java variable name, start with a letter, dollar sign, or underscore, followed by letters, digits, dollar signs, or underscores. No spaces or special characters like @, !, # are allowed.'
+UNIQUE_PROPERTY_NAMES_ERROR = 'Property name "%s" already exists in the "%s" class! Each property name must be unique within a class.'
+NO_ID_PROPERTY_ERROR  = 'There is no ID property in the "%s" class! An ID property is required.'
+MULTIPLE_ID_PROPERTIES_ERROR = '"%s" class has more than one ID property! Only one ID property is allowed.'
+EMPTY_CONSTRUCTOR_ERROR = 'There is no empty constructor in the "%s" class! An empty constructor is required.'
+UNIQUE_CONSTRUCTORS_ERROR = 'The specific constructor "%s" already exists in the "%s" class! Each constructor must be unique within a class.'
+UNIQUE_METHODS_ERROR = 'The method "%s"%s already exists in the "%s" class! Each method within a class must be unique, defined by both name and properties.'
+PROPERTY_NAME_ERROR = 'Property name "%s" is not a valid Java variable name! %s'
+JAVA_PROPERTY_NAME_ERROR = 'To create a valid Java variable name, start with a letter, dollar sign, or underscore, followed by letters, digits, dollar signs, or underscores. No spaces or special characters like @, !, # are allowed.'
+ID_PROPERTY_VALUE_ERROR = 'The "%s" property of type "%s" should not have a "const" or "constant" keyword specified and/or value defined! Constant values are not allowed for ID properties.'
+ID_PROPERTY_GETTER_ENCAPSULATION_ERROR = 'The "%s" property of type "%s" requires a getter method to be defined! Getter methods are mandatory for ID properties.'
+ID_PROPERTY_SETTER_ENCAPSULATION_ERROR = 'The "%s" property of type "%s" should not have a setter method defined! Setter methods are not allowed for ID properties.'
+ENTITY_PROPERTY_CONSTANT_ERROR = 'The "%s" property of the "%s" class type cannot be declared as a constant! Constant properties cannot have the type "%s".'
+ENTITY_PROPERTY_VALUE_ERROR = 'The "%s" property of the "%s" class type cannot have a defined value. Only constant properties can have a defined value.'
+ENTITY_PROPERTY_RELATIONSHIP_ERROR = 'The "%s" property of the "%s" class type must have a relationship! Supported relationships are "1-1" (one-to-one), "1-n" (one-to-many), "n-1" (many-to-one), and "n-n" (many-to-many).'
+ENTITY_PROPERTY_LIST_RELATIONSHIP_ERROR = 'The "%s" list property of the "%s" class type does not support the "%s" relationship! "%s" properties support "1-n" (one-to-many), "n-1" (many-to-one), and "n-n" (many-to-many) relationships.'
+ENTITY_PROPERTY_NON_LIST_RELATIONSHIP_ERROR = 'The "%s" property of the "%s" class type does not support the "%s" relationship! "%s" properties support only "1-1" (one-to-one) relationship.'
+PROPERTY_RELATIONSHIP_ERROR = 'The "%s" property cannot have a relationship since it is not of a appropriate type! Only lists and classes support relationships.'
+CONSTANT_AND_VALUE_ERROR = 'If "const" or "constant" keyword is specified, constant value is mandatory, and vice versa! In this case, %s is missing for "%s".'
+CONSTANT_AND_ENCAPSULATION_ERROR = 'Constant property "%s" cannot have setter method! Constant properties can only have getter methods.'
+CONSTANT_PROPERTY_VALUE_ERROR = 'Invalid value "%s" for property "%s" of type "%s" (%s)!'
+LIST_ELEMENTS_ERROR = 'Invalid value "%s" in "%s" %s for property "%s" of type "%s" (%s)!'
+CONSTRUCTOR_UNIQUE_PROPERTIES_ERROR = 'The specified constructor includes the property "%s", which is defined more than once! Constructors cannot include non-unique properties.'
+CONSTRUCTOR_CONSTANT_PROPERTY_ERROR = 'The specified constructor includes the property "%s", which is defined as a constant! Constructors cannot include properties that are constants.'
 
 # REGEX
 PLANTUML_REGEX = r'^plantuml-\d+\.\d+\.\d+\.jar$'
@@ -88,6 +112,7 @@ DATETIME_REGEX = r'%Y-%m-%d %H:%M:%S'
 JAVA_CLASS_NAME_REGEX = r'^[A-Z][a-zA-Z0-9_$]*$'
 JAVA_VARIABLE_NAME_REGEX = r'^[a-zA-Z_$][a-zA-Z\d_$]*$'
 SYNTAX_ERROR_MESSAGE_REGEX = r'(.*?)at position.*?=>(.*)'
+UNKNOWN_OBJECT_ERROR_MESSAGE_REGEX = r'Unknown object "(.*?)" of class "(.*?)"'
 QUOTE_REGEX = r"'(.*?)'"
 RULE_DEFINED_SIGNS_REGEX = r'[:;=\{\}\[\]\(\),]'
 CLASS_NAME_REGEX = r'class\s+(\w+)\s*\{'

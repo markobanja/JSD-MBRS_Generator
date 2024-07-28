@@ -149,9 +149,9 @@ class MainWindowGUI:
         Initialize the console frame and its label component.
         """
         console_frame = ttk.Frame(self.window, borderwidth=2, relief='groove')
-        console_frame.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True, padx=10, pady=5)
-        self.console_output = tk.Label(console_frame, text=cfg.HELP_BUTTON_TEXT, font=self.default_font, wraplength=650, fg=INFORMATION_COLOR)
-        self.console_output.pack(padx=10, pady=10, ipady=20, fill=tk.BOTH, expand=True)
+        console_frame.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=False, padx=10, pady=5)
+        self.console_output = tk.Label(console_frame, text=cfg.HELP_BUTTON_TEXT, font=self.default_font, height=2, wraplength=650, fg=INFORMATION_COLOR)
+        self.console_output.pack(padx=10, pady=10, ipady=20, fill=tk.BOTH, expand=False)
         logging.info('Console frame initialized')
 
     def init_line_number_text(self):
@@ -171,7 +171,7 @@ class MainWindowGUI:
         Initialize the text editor widget.
         """
         self.text_editor = scrolledtext.ScrolledText(self.window, wrap=tk.WORD, font=self.default_font, height=30, width=80, undo=True, maxundo=-1, cursor='arrow', background=INITIAL_BACKGROUND_COLOR)
-        self.text_editor.pack(side=tk.LEFT, padx=5, pady=5, fill=tk.BOTH, expand=True)
+        self.text_editor.pack(side=tk.LEFT, padx=5, pady=5, fill=tk.BOTH, expand=False)
         self.text_editor.bind('<KeyPress>', self.on_scroll)
         self.text_editor.bind('<MouseWheel>', self.on_scroll)
         self.text_editor.bind('<B1-Motion>', self.on_scroll)
@@ -209,11 +209,12 @@ class MainWindowGUI:
                 return
         
             logging.info('Opening project folder')
-            self.project_path = filedialog.askdirectory(title='Select Spring Boot project folder')
-            if not self.project_path:
+            project_path = filedialog.askdirectory(title='Select Spring Boot project folder')
+            if not project_path:
                 logging.warning('No project path selected')
                 return
-
+            
+            self.project_path = project_path
             self.project_name = utils.get_base_name(self.project_path)
             logging.info(f'Checking if folder "{self.project_name}" is a valid Spring Boot application')
             build_tool, is_spring_boot = utils.is_spring_boot_application(self.project_path)
@@ -228,7 +229,7 @@ class MainWindowGUI:
             content = self.get_grammar_file_content()
             self.text_editor.insert(tk.INSERT, content)
             self.update_line_numbers()
-            self.set_color_to_text(True)
+            self.set_color_to_text()
             self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} The selected folder "{self.project_name}" is a valid {build_tool} Spring Boot application.', fg=INFORMATION_COLOR)
             logging.info(f'Folder "{self.project_name}" is a valid Spring Boot application')
         except Exception as e:
@@ -297,13 +298,14 @@ class MainWindowGUI:
 
                 self.busy = True
                 response = tg.generate(self.project_path, self.grammar_file_name)
-                if response is cfg.OK:
+                if response.status is cfg.OK:
                     self.export_button.config(state=tk.NORMAL)
                     response_color = OK_COLOR
                     response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["OK"]} Successfully executed generate action.'
                 else:
                     response_color = ERROR_COLOR
-                    response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(response)}'
+                    response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(response.error_msg)}'
+                    self.set_error_color(response)
                 self.console_output.config(text=response_text, fg=response_color)
             except Exception as e:
                 error_message = f'Failed to generate metamodel and model: {str(e)}'
@@ -336,10 +338,10 @@ class MainWindowGUI:
 
                 # Export the metamodel and model to the project folder
                 response = tg.export(self.project_path)
-                if response is cfg.OK:
+                if response.status is cfg.OK:
                     response_color = OK_COLOR
                     response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["OK"]} Successfully exported files to the "{export_folder}" folder.'
-                elif response is cfg.WARNING:
+                elif response.status is cfg.WARNING:
                     response_color = WARNING_COLOR
                     response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["WARN"]} Files exported with warnings to the "{export_folder}" folder.'
                 else:
@@ -397,13 +399,7 @@ class MainWindowGUI:
         
         self.update_line_numbers(event)
         self.compare_grammar_content()
-
-        # Check if the last typed character is a rule defined sign (splitted to speed up the colorization)
-        last_char_typed = self.get_last_typed_char()
-        if utils.check_value_regex(cfg.RULE_DEFINED_SIGNS_REGEX, last_char_typed):
-            self.apply_color_to_text(cfg.RULE_DEFINED_SIGNS, RULE_DEFINED_SIGNS_COLOR, True, True)
-        else:
-            self.set_color_to_text()
+        self.set_color_to_text()
     
     def on_mouse_click(self, event=None):
         """
@@ -433,7 +429,7 @@ class MainWindowGUI:
         Method for handling the paste event.
         """
         logging.debug('Paste event detected. Scheduling set color to text')
-        self.window.after(1, lambda: self.set_color_to_text(True))
+        self.window.after(1, self.set_color_to_text)
 
     def on_window_close(self):
         """
@@ -563,7 +559,7 @@ class MainWindowGUI:
             logging.debug('Text editor content matches the grammar file content')
             self.circle_canvas.itemconfig(self.circle, fill=OK_COLOR)
 
-    def set_color_to_text(self, should_color=False):
+    def set_color_to_text(self):
         """
         Set the color of the words in the text editor.
         """
@@ -574,13 +570,9 @@ class MainWindowGUI:
         for words_list, color in self.color_mappings:
             self.apply_color_to_text(words_list, color)
         
+        self.rule_defined_signs_color(RULE_DEFINED_SIGNS_COLOR)
         self.class_name_color(CLASS_NAME_COLOR)
         self.property_value_color(PROPERTY_VALUE_COLOR)
-
-        # This will be called only on open project action and paste event to avoid calling function multiple times which cause program to crash
-        if should_color:
-            self.rule_defined_signs_color(RULE_DEFINED_SIGNS_COLOR)
-            
         self.comment_color(COMMENT_COLOR)  # Color comments last to override other colors
         logging.debug('Color set to text')
 
@@ -633,29 +625,105 @@ class MainWindowGUI:
         self.apply_color_to_text(comments, color)
         logging.debug('Color applied to comments')
 
-    def remove_color_from_text(self, color, check_line_only):
+    def set_error_color(self, response):
         """
-        Remove the color from the text editor.
+        Set the error color in the text editor based on the error type.
         """
-        logging.debug(f'Removing color "{color}" from text')
-        start_index = '1.0'
-        end_index = tk.END
-        if check_line_only:
-            logging.debug('Checking line only')
-            # Remove the color only from the current line
-            cursor_position = self.get_cursor_position()
-            line = str(cursor_position.split('.')[0])
-            start_index = f'{line}.0'
-            end_index = f'{line}.end'
-        self.text_editor.tag_remove(color, start_index, end_index)
-        logging.debug(f'Color "{color}" removed from text')
+        logging.debug('Setting error color')
+        if response.error_class == 'TextXSyntaxError':
+            self.syntax_error_color(response)
+        elif response.error_class == 'TextXSemanticError':
+            self.semantic_error_color(response)
+        elif response.error_class == 'SemanticError':
+            self.semantic_error_color(response)
+        logging.debug('Error color set')
 
-    def apply_color_to_text(self, text_list, color, check_line_only=False, check_signs=False):
+    def syntax_error_color(self, response):
+        """
+        Highlights the line with a syntax error in the text editor.
+        """
+        logging.debug('Setting syntax error color')
+
+        def is_near_part_in_line(line_number):
+            logging.debug(f'Checking if error near part: {near_part} is in line "{line_number}"')
+            start_index = f'{line_number}.0'
+            end_index = f'{line_number}.end'
+            line_text = self.text_editor.get(start_index, end_index)
+            return near_part in line_text
+
+        near_part = response.near_part
+        penultimate_line_number = response.error.line - 2
+        previous_line_number = response.error.line - 1
+        current_line_number = response.error.line
+
+        if is_near_part_in_line(previous_line_number):
+            start_index = f'{previous_line_number}.0'
+            end_index = f'{previous_line_number}.end'
+            logging.debug(f'Highlighting previous line: "{previous_line_number}"')
+        elif is_near_part_in_line(current_line_number):
+            start_index = f'{current_line_number}.0'
+            end_index = f'{current_line_number}.end'
+            logging.debug(f'Highlighting current line: "{current_line_number}"')
+        elif is_near_part_in_line(penultimate_line_number):
+            start_index = f'{penultimate_line_number}.0'
+            end_index = f'{penultimate_line_number}.end'
+            logging.debug(f'Highlighting current line: "{penultimate_line_number}"')
+        self.remove_tags_text_editor(start_index, end_index)
+        self.text_editor.tag_configure(ERROR_COLOR, foreground=ERROR_COLOR)
+        self.text_editor.tag_add(ERROR_COLOR, start_index, end_index)
+        logging.debug('Syntax error color set')
+
+    def semantic_error_color(self, response):
+        """
+        Checks if the error's search value is a list or not and according to that call appropriate function.
+        """
+        search_value = response.error.search_value
+        logging.debug(f'Semantic error search value: "{search_value}"')
+        if isinstance(search_value, list):
+            for value in search_value:
+                self.apply_semantic_error_color(response, value)
+        else:
+            self.apply_semantic_error_color(response, search_value)
+        logging.debug('Semantic error color set')
+
+    def apply_semantic_error_color(self, response, search_value):
+        """
+        Apply the semantic error color to the every specified search value in the text editor (check only the line where the error occurred).
+        """
+        logging.debug(f'Applying semantic error color for {search_value} in line {response.error.line}')
+        error_line = response.error.line
+        line_text = self.text_editor.get(f'{error_line}.0', f'{error_line}.end')
+        if search_value in line_text:
+            start_index = 0
+            while start_index < len(line_text):
+                start_index = line_text.find(search_value, start_index)
+                if start_index == -1:
+                    break
+                end_index = start_index + len(search_value)
+                logging.debug(f'Highlighting {search_value} from {start_index} to {end_index} in line {error_line}')
+                self.remove_tags_text_editor(f'{error_line}.{start_index}', f'{error_line}.{end_index}')
+                self.text_editor.tag_configure(ERROR_COLOR, foreground=ERROR_COLOR)
+                self.text_editor.tag_add(ERROR_COLOR, f'{error_line}.{start_index}', f'{error_line}.{end_index}')
+                start_index += len(search_value)  # Move to the next occurrence
+
+    def remove_tags_text_editor(self, start_index, end_index):
+        """
+        Remove tags from start until end index in the text editor.
+        """
+        logging.debug(f'Removing tags from text editor from "{start_index}" to "{end_index}"')
+        all_tags = self.text_editor.tag_names()
+        # Remove each tag from the specific line
+        for tag in all_tags:
+            self.text_editor.tag_remove(tag, start_index, end_index)
+            logging.debug(f'Removed tag "{tag}"')
+
+    def apply_color_to_text(self, text_list, color, check_signs=False):
         """
         Apply the color to the words in the text editor based on the provided parameters.
         """
         logging.debug(f'Applying color "{color}" to text')
-        self.remove_color_from_text(color, check_line_only)
+        self.text_editor.tag_remove(color, '1.0', tk.END)
+        self.text_editor.tag_remove(ERROR_COLOR, '1.0', tk.END)
         self.text_editor.tag_configure(color, foreground=color)
         for word in text_list:
             start_index = '1.0'
