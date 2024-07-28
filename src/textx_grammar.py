@@ -97,6 +97,7 @@ class TextXGrammar():
             'EntityModel': lambda model: self.model_processor(self, model),
             'Entity': lambda entity: self.entity_processor(self, entity),
             'Property': lambda property: self.property_processor(self, property),
+            'Constructors': lambda constructor: self.constructor_processor(self, constructor),
         })
 
         logging.info('Metamodel generated')
@@ -266,6 +267,16 @@ class TextXGrammar():
         self.check_constant_and_encapsulation(property)
         self.check_constant_property_value(self, property)
         logging.info(f'Successfully finished semantic checks for property "{property.name}"')
+
+    def constructor_processor(self, constructor):
+        """
+        Perform semantic checks on each constructor in the model.
+        """
+        constructor_name = constructor_name = self.create_constructor_name(constructor)
+        logging.info(f'Starting semantic checks for "{constructor_name}" constructor')
+        self.check_constructor_unique_properties(constructor)
+        self.check_constructor_constant_property(constructor)
+        logging.info(f'Successfully finished semantic checks for constructor "{constructor_name}"')
 
     # MODEL SEMANTIC CHECKS
     def check_unique_class_names(model):
