@@ -17,6 +17,17 @@ OK_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['ok'])
 INFORMATION_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['information'])
 WARNING_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['warning'])
 ERROR_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['error'])
+DEFAULT_FONT_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['default_font'])
+RULE_DEFINED_SIGNS_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['rule_defined_signs'])
+RULE_DEFINED_WORDS_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['rule_defined'])
+GRAMMAR_DEFINED_WORDS_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['grammar_defined'])
+TYPE_DEFINED_WORDS_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['type_defined'])
+WRAPPER_TYPE_DEFINED_WORDS_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['wrapper_type_defined'])
+KEYWORD_DEFINED_WORDS_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['keyword_defined'])
+ENCAPSULATION_DEFINED_WORDS_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['encapsulation_defined'])
+CLASS_NAME_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['class_name'])
+COMMENT_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['comment'])
+PROPERTY_VALUE_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['property_value'])
 
 
 def position_window(window, width, height):
@@ -66,6 +77,14 @@ class MainWindowGUI:
         self.grammar_file_content = None
         self.busy = False
         self.save_event = threading.Event()  # Event for synchronization
+        self.color_mappings = [
+            (cfg.RULE_DEFINED_WORDS, RULE_DEFINED_WORDS_COLOR),
+            (cfg.GRAMMAR_DEFINED_WORDS, GRAMMAR_DEFINED_WORDS_COLOR),
+            (cfg.TYPE_DEFINED_WORDS, TYPE_DEFINED_WORDS_COLOR),
+            (cfg.WRAPPER_TYPE_DEFINED_WORDS, WRAPPER_TYPE_DEFINED_WORDS_COLOR),
+            (cfg.KEYWORD_DEFINED_WORDS, KEYWORD_DEFINED_WORDS_COLOR),
+            (cfg.ENCAPSULATION_DEFINED_WORDS, ENCAPSULATION_DEFINED_WORDS_COLOR),
+        ]
 
     def init_window(self):
         """
@@ -76,23 +95,32 @@ class MainWindowGUI:
         self.window.title(cfg.MAIN_WINDOW_TITLE)
         self.window.resizable(False, False)
         self.window.protocol('WM_DELETE_WINDOW', self.on_window_close)
-        self.input_text_font = utils.set_font(cfg.FONT, 11, True)
+        self.default_font = utils.set_font(cfg.FONT, 11, True)
         self.window.geometry(position_window(self.window, cfg.MAIN_WINDOW_WIDTH, cfg.MAIN_WINDOW_HEIGHT))
-        config_style(self.window, self.input_text_font)
+        config_style(self.window, self.default_font)
         self.init_window_components()
+        self.init_window_binds()
         self.initial_state()
-
+        
     def init_window_components(self):
         """
         Initializes the components of the main window.
         """
         logging.info('Initializing main window components')
         self.init_toolbar()
+        self.init_console_frame()
         self.init_line_number_text()
         self.init_text_editor()
         self.init_canvas_circle()
-        self.init_console_frame()
         self.set_window_weights()
+
+    def init_window_binds(self):
+        """
+        Initialize the binds for the main window.
+        """
+        self.window.bind('<ButtonRelease-1>', self.on_mouse_click)
+        self.window.bind('<MouseWheel>', self.on_scroll)
+        self.window.bind('<B1-Motion>', self.on_scroll)
 
     def init_toolbar(self):
         """
@@ -105,24 +133,33 @@ class MainWindowGUI:
         self.export_button = ttk.Button(toolbar, text='Export', command=self.export_action, compound=tk.TOP, style='Toolbar.TButton', state=tk.DISABLED)
         self.help_button = ttk.Button(toolbar, text='Help', command=self.help_action, compound=tk.TOP, style='Toolbar.TButton')
 
-        # Place the buttons in the toolbar
-        self.open_button.grid(row=0, column=0, padx=5)
-        self.save_button.grid(row=0, column=1, padx=5)
-        self.generate_button.grid(row=0, column=2, padx=5)
-        self.export_button.grid(row=0, column=3, padx=5)
-        self.help_button.grid(row=0, column=5, padx=5)
+        # Pack the buttons in the toolbar
+        self.open_button.pack(side=tk.LEFT, padx=5)
+        self.save_button.pack(side=tk.LEFT, padx=5)
+        self.generate_button.pack(side=tk.LEFT, padx=5)
+        self.export_button.pack(side=tk.LEFT, padx=5)
+        self.help_button.pack(side=tk.RIGHT, padx=5)
 
         # Configure the toolbar
-        toolbar.columnconfigure(4, weight=1)
-        toolbar.grid(row=0, column=0, columnspan=6, sticky='ew', pady=5)
+        toolbar.pack(fill=tk.X)
         logging.info('Toolbar initialized')
+
+    def init_console_frame(self):
+        """
+        Initialize the console frame and its label component.
+        """
+        console_frame = ttk.Frame(self.window, borderwidth=2, relief='groove')
+        console_frame.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True, padx=10, pady=5)
+        self.console_output = tk.Label(console_frame, text=cfg.HELP_BUTTON_TEXT, font=self.default_font, wraplength=650, fg=INFORMATION_COLOR)
+        self.console_output.pack(padx=10, pady=10, ipady=20, fill=tk.BOTH, expand=True)
+        logging.info('Console frame initialized')
 
     def init_line_number_text(self):
         """
         Initialize line number text widget.
         """
-        self.line_number_text = tk.Text(self.window, font=self.input_text_font, width=3, padx=5, wrap=tk.NONE, state=tk.DISABLED, cursor='arrow', background=INITIAL_BACKGROUND_COLOR)
-        self.line_number_text.grid(row=1, column=0, padx=5, pady=5, sticky='nsw')
+        self.line_number_text = tk.Text(self.window, font=self.default_font, width=5, padx=5, wrap=tk.NONE, state=tk.DISABLED, cursor='arrow', background=INITIAL_BACKGROUND_COLOR)
+        self.line_number_text.pack(side=tk.LEFT, padx=5, pady=5, fill=tk.Y)
         self.line_number_text.bind('<Key>', lambda event: 'break')
         self.line_number_text.bind('<MouseWheel>', lambda event: 'break')
         self.line_number_text.bind('<B1-Motion>', lambda event: ('break', self.line_number_text.event_generate('<ButtonRelease-1>')))
@@ -133,13 +170,14 @@ class MainWindowGUI:
         """
         Initialize the text editor widget.
         """
-        self.text_editor = tk.Text(self.window, wrap=tk.WORD, font=self.input_text_font, height=30, width=80, undo=True, maxundo=-1, cursor='arrow', background=INITIAL_BACKGROUND_COLOR)
-        self.text_editor.grid(row=1, column=1, padx=10, pady=5, columnspan=2, sticky='nsew')
+        self.text_editor = scrolledtext.ScrolledText(self.window, wrap=tk.WORD, font=self.default_font, height=30, width=80, undo=True, maxundo=-1, cursor='arrow', background=INITIAL_BACKGROUND_COLOR)
+        self.text_editor.pack(side=tk.LEFT, padx=5, pady=5, fill=tk.BOTH, expand=True)
         self.text_editor.bind('<KeyPress>', self.on_scroll)
-        self.text_editor.bind('<KeyRelease>', self.on_type_text)
         self.text_editor.bind('<MouseWheel>', self.on_scroll)
         self.text_editor.bind('<B1-Motion>', self.on_scroll)
-        self.text_editor.bind('<Control-s>', self.save_grammar_action)
+        self.text_editor.bind('<KeyRelease>', self.on_type_text)
+        self.text_editor.bind('<Control-s>', self.on_save)
+        self.text_editor.bind('<Control-v>', self.on_paste)
         logging.info('Text editor widget initialized')
 
     def init_canvas_circle(self):
@@ -150,18 +188,6 @@ class MainWindowGUI:
         self.circle = self.circle_canvas.create_oval(2, 2, 10, 10, outline=BLACK_COLOR, fill=OK_COLOR)
         self.circle_canvas.place(relx=1, rely=1, anchor=tk.SE)
         logging.info('Canvas circle widget initialized for text editor')
-
-    def init_console_frame(self):
-        """
-        Initialize the console frame and its label component.
-        """
-        console_frame = ttk.Frame(self.window, borderwidth=2, relief='groove')
-        console_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=5, sticky='nsew')
-        self.console_output = tk.Label(console_frame, text=cfg.HELP_BUTTON_TEXT, font=self.input_text_font, wraplength=650, fg=INFORMATION_COLOR)
-        self.console_output.pack(padx=10, pady=10, ipady=50)
-        console_frame.grid_rowconfigure(0, weight=1)
-        console_frame.grid_columnconfigure(0, weight=1)
-        logging.info('Console frame initialized')
 
     def set_window_weights(self):
         """
@@ -202,6 +228,7 @@ class MainWindowGUI:
             content = self.get_grammar_file_content()
             self.text_editor.insert(tk.INSERT, content)
             self.update_line_numbers()
+            self.set_color_to_text(True)
             self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} The selected folder "{self.project_name}" is a valid {build_tool} Spring Boot application.', fg=INFORMATION_COLOR)
             logging.info(f'Folder "{self.project_name}" is a valid Spring Boot application')
         except Exception as e:
@@ -361,18 +388,52 @@ class MainWindowGUI:
 
     def on_type_text(self, event=None):
         """
-        Update the line numbers and canvas color when the user types text in the text editor.
+        Method for handling the key release event.
         """
-        if event.keysym not in cfg.KEYSYMS_TO_IGNORE:
-            self.update_line_numbers(event)
-            self.compare_grammar_content()
+        logging.debug('Key release event detected')
+        if event and event.keysym in cfg.KEYSYMS_TO_IGNORE:
+            logging.debug(f'Key "{event.keysym}" is in the list of keys to ignore. Skipping the rest of the code')
+            return
+        
+        self.update_line_numbers(event)
+        self.compare_grammar_content()
+
+        # Check if the last typed character is a rule defined sign (splitted to speed up the colorization)
+        last_char_typed = self.get_last_typed_char()
+        if utils.check_value_regex(cfg.RULE_DEFINED_SIGNS_REGEX, last_char_typed):
+            self.apply_color_to_text(cfg.RULE_DEFINED_SIGNS, RULE_DEFINED_SIGNS_COLOR, True, True)
+        else:
+            self.set_color_to_text()
+    
+    def on_mouse_click(self, event=None):
+        """
+        Method for handling the mouse click event.
+        """
+        logging.debug('Mouse click event detected')
+        # Handle the mouse click event to call scroll function if scrollbar is clicked
+        if event and event.widget.winfo_class() == 'Scrollbar':
+            self.on_scroll(event)
 
     def on_scroll(self, event=None):
         """
-        Handle the scroll event and schedule an update for the line numbers.
+        Method for handling the scroll event.
         """
         logging.debug('Scroll event detected. Scheduling line numbers update')
+        # Call update line numbers function after small delay
         self.window.after(1, self.update_line_numbers)
+
+    def on_save(self, event=None):
+        """
+        Method for handling the save event.
+        """
+        self.save_grammar_action(event)
+
+    def on_paste(self, event=None):
+        """
+        Method for handling the paste event.
+        """
+        logging.debug('Paste event detected. Scheduling set color to text')
+        self.window.after(1, lambda: self.set_color_to_text(True))
 
     def on_window_close(self):
         """
@@ -430,8 +491,8 @@ class MainWindowGUI:
         logging.debug('Updating line numbers in the line number text widget')
         self.line_number_text.config(state=tk.NORMAL)
         self.line_number_text.delete('1.0', tk.END)
-        content = self.text_editor.get('1.0', tk.END)
-        total_lines = content.count('\n')
+        content = self.get_text_editor_content()
+        total_lines = content.count('\n') + 1
         line_numbers = ''.join(f'{i}\n' for i in range(1, total_lines))
         self.line_number_text.insert(tk.END, str(line_numbers), 'right_align')
         self.line_number_text.insert(tk.END, str(total_lines), 'right_align')
@@ -502,6 +563,126 @@ class MainWindowGUI:
             logging.debug('Text editor content matches the grammar file content')
             self.circle_canvas.itemconfig(self.circle, fill=OK_COLOR)
 
+    def set_color_to_text(self, should_color=False):
+        """
+        Set the color of the words in the text editor.
+        """
+        logging.debug('Setting color to text')
+        self.set_default_font_color(DEFAULT_FONT_COLOR)  # Set the default font color first
+
+        # Apply color to text based on the color mappings
+        for words_list, color in self.color_mappings:
+            self.apply_color_to_text(words_list, color)
+        
+        self.class_name_color(CLASS_NAME_COLOR)
+        self.property_value_color(PROPERTY_VALUE_COLOR)
+
+        # This will be called only on open project action and paste event to avoid calling function multiple times which cause program to crash
+        if should_color:
+            self.rule_defined_signs_color(RULE_DEFINED_SIGNS_COLOR)
+            
+        self.comment_color(COMMENT_COLOR)  # Color comments last to override other colors
+        logging.debug('Color set to text')
+
+    def set_default_font_color(self, color):
+        """
+        Set the default font color in the text editor.
+        """
+        logging.debug('Setting default font color')
+        self.text_editor.tag_configure(color, foreground=color)
+        self.text_editor.tag_add(color, '1.0', tk.END)
+        logging.debug('Default font color set')
+
+    def rule_defined_signs_color(self, color):
+        """
+        Apply color to rule defined signs in the text editor.
+        """
+        logging.debug('Applying color to rule defined signs')
+        content = self.get_text_editor_content()
+        rule_defined_signs = utils.extract_rule_defined_signs_regex(content)
+        self.apply_color_to_text(rule_defined_signs, color, check_signs=True)
+        logging.debug('Color applied to rule defined signs')
+
+    def class_name_color(self, color):
+        """
+        Apply color to class names in the text editor.
+        """
+        logging.debug('Applying color to class names')
+        content = self.get_text_editor_content()
+        class_names = utils.extract_class_names_regex(content)
+        self.apply_color_to_text(class_names, color)
+        logging.debug('Color applied to class names')
+
+    def property_value_color(self, color):
+        """
+        Apply color to property value in the text editor.
+        """
+        logging.debug('Applying color to property value')
+        content = self.get_text_editor_content()
+        property_value = utils.extract_property_values_regex(content)
+        self.apply_color_to_text(property_value, color)
+        logging.debug('Color applied to property value')
+
+    def comment_color(self, color):
+        """
+        Apply color to comments in the text editor.
+        """
+        logging.debug('Applying color to comments')
+        content = self.get_text_editor_content()
+        comments = utils.extract_comments_regex(content)
+        self.apply_color_to_text(comments, color)
+        logging.debug('Color applied to comments')
+
+    def remove_color_from_text(self, color, check_line_only):
+        """
+        Remove the color from the text editor.
+        """
+        logging.debug(f'Removing color "{color}" from text')
+        start_index = '1.0'
+        end_index = tk.END
+        if check_line_only:
+            logging.debug('Checking line only')
+            # Remove the color only from the current line
+            cursor_position = self.get_cursor_position()
+            line = str(cursor_position.split('.')[0])
+            start_index = f'{line}.0'
+            end_index = f'{line}.end'
+        self.text_editor.tag_remove(color, start_index, end_index)
+        logging.debug(f'Color "{color}" removed from text')
+
+    def apply_color_to_text(self, text_list, color, check_line_only=False, check_signs=False):
+        """
+        Apply the color to the words in the text editor based on the provided parameters.
+        """
+        logging.debug(f'Applying color "{color}" to text')
+        self.remove_color_from_text(color, check_line_only)
+        self.text_editor.tag_configure(color, foreground=color)
+        for word in text_list:
+            start_index = '1.0'
+            while True:
+                match_start = self.text_editor.search(word, start_index, stopindex=tk.END)
+                # If no match is found, break the loop
+                if not match_start:
+                    break
+                end_index = f'{match_start}+{len(word)}c'
+                if self.is_whole_word(match_start, end_index) or check_signs:
+                    # Apply the color to the word
+                    self.text_editor.tag_add(color, match_start, end_index)
+                    logging.debug(f'Applied color "{color}" to word "{word}"')
+                # Update the start index for the next search
+                start_index = end_index
+
+    def is_whole_word(self, start_index, end_index):
+        """
+        Check if the selected text is a whole word.
+        """
+        logging.debug(f'Checking if {start_index} to {end_index} is a whole word')
+        before_char = '' if start_index == '1.0' else self.text_editor.get(f'{start_index}-1c')
+        after_char = self.text_editor.get(f'{end_index}')
+        is_whole_word = not (before_char.isalnum() or after_char.isalnum())
+        logging.debug(f'Result: {is_whole_word}')
+        return is_whole_word
+
     def get_text_editor_content(self):
         """
         Get the content of the text editor, excluding the last character (newline).
@@ -509,6 +690,27 @@ class MainWindowGUI:
         logging.debug('Retrieving text editor content')
         end_minus_one = self.text_editor.index(f'{tk.END}-1c')
         return self.text_editor.get('1.0', end_minus_one)
+    
+    def get_cursor_position(self):
+        """
+        Get the cursor position in the text editor.
+        """
+        logging.debug(f'Retrieving cursor position')
+        cursor_position = self.text_editor.index(tk.INSERT)
+        line, col = map(int, cursor_position.split('.'))
+        logging.debug(f'Cursor position - line: {line}, column: {col}')
+        return cursor_position
+    
+    def get_last_typed_char(self):
+        """
+        Get the last character in the text editor after on type event (first char before cursor).
+        """
+        logging.debug('Getting last typed character')
+        cursor_position = self.get_cursor_position()
+        last_char_position = f'{cursor_position}-1c'
+        last_char = self.text_editor.get(last_char_position, cursor_position)
+        logging.debug(f'Last typed character is: "{last_char}"')
+        return last_char
     
     def get_project_path(self):
         """

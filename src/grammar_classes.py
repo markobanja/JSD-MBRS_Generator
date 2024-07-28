@@ -127,6 +127,8 @@ def get_type_builtins():
 
         cfg.ARRAY: ListType(cfg.ARRAY, '[]'),
         cfg.LINKED: ListType(cfg.LINKED, '[]'),
+        cfg.HASHMAP: ListType(cfg.HASHMAP, '[]'),
+        cfg.HASHSET: ListType(cfg.HASHSET, '[]'),
+        cfg.TREEMAP: ListType(cfg.TREEMAP, '[]'),
         cfg.LIST: ListType(cfg.LIST, '[]'),
-        cfg.SET: ListType(cfg.SET, '[]'),
     }

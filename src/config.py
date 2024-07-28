@@ -12,6 +12,17 @@ COLORS = {
     'information': (52, 152, 219),
     'warning': (255, 102, 34),
     'error': (204, 0, 0),
+    'default_font': (66, 83, 100),
+    'rule_defined_signs': (129, 25, 129),
+    'rule_defined': (58, 65, 211),
+    'grammar_defined': (195, 142, 47),
+    'type_defined': (62, 141, 96),
+    'wrapper_type_defined': (9, 108, 21),
+    'keyword_defined': (160, 97, 178),
+    'encapsulation_defined': (78, 141, 193),
+    'class_name': (131, 96, 63),
+    'comment': (131, 143, 154),
+    'property_value': (201, 97, 105),
 }
 CONSOLE_LOG_LEVEL_TAGS = {
     'OK': '[OK]',
@@ -33,6 +44,14 @@ HELP_WINDOW_HEIGHT = 400
 SAVE_WINDOW_TITLE = 'Save Grammar'
 SAVE_WINDOW_WIDTH = 250
 SAVE_WINDOW_HEIGHT = 150
+# Predefined words
+RULE_DEFINED_SIGNS = [':', ';', '=', '{', '}', '[', ']', '(', ')', ',']
+RULE_DEFINED_WORDS = ['Database', 'class', 'Constructors', 'Methods', 'toString']
+GRAMMAR_DEFINED_WORDS = ['driver', 'database name', 'username', 'password', 'public', 'abstract', 'final', 'empty', 'default', 'static', 'id', 'identifier', 'uniqueId', 'key', 'primaryKey', 'yes', 'no', '1-1', '1-n', 'n-1', 'n-n']
+TYPE_DEFINED_WORDS = ['byte', 'short', 'char', 'int', 'float', 'long', 'double', 'boolean', 'string', 'date', 'time', 'datetime']
+WRAPPER_TYPE_DEFINED_WORDS = ['Integer', 'Float', 'Double', 'Boolean']
+KEYWORD_DEFINED_WORDS = ['constant', 'const', 'array', 'linked', 'hashmap', 'hashset', 'treemap', 'list',  'void']
+ENCAPSULATION_DEFINED_WORDS = ['getter', 'get', 'setter', 'set']
 
 # TEXTX GRAMMAR
 # Folders
@@ -62,7 +81,7 @@ JAVA_VARIABLE_NAME_ERROR = 'To create a valid Java variable name, start with a l
 
 # REGEX
 PLANTUML_REGEX = r'^plantuml-\d+\.\d+\.\d+\.jar$'
-JSD_MBRS_GENERATOR_REGEX = r"\w+\.jsdmbrs$"
+JSD_MBRS_GENERATOR_REGEX = r'\w+\.jsdmbrs$'
 DATE_REGEX = r'%Y-%m-%d'
 TIME_REGEX = r'%H:%M:%S'
 DATETIME_REGEX = r'%Y-%m-%d %H:%M:%S'
@@ -70,6 +89,10 @@ JAVA_CLASS_NAME_REGEX = r'^[A-Z][a-zA-Z0-9_$]*$'
 JAVA_VARIABLE_NAME_REGEX = r'^[a-zA-Z_$][a-zA-Z\d_$]*$'
 SYNTAX_ERROR_MESSAGE_REGEX = r'(.*?)at position.*?=>(.*)'
 QUOTE_REGEX = r"'(.*?)'"
+RULE_DEFINED_SIGNS_REGEX = r'[:;=\{\}\[\]\(\),]'
+CLASS_NAME_REGEX = r'class\s+(\w+)\s*\{'
+PROPERTY_VALUE_REGEX = r'=(.*?);'
+COMMENT_REGEX = r'//(.*)'
 
 # PROPERTY TYPES
 # IDTypes
@@ -101,8 +124,10 @@ DATETIME = 'datetime'
 # ListTypes
 ARRAY = 'array'
 LINKED = 'linked'
+HASHMAP = 'hashmap'
+HASHSET = 'hashset'
+TREEMAP = 'treemap'
 LIST = 'list'
-SET = 'set'
 # Custom error messages per property type
 ERROR_MESSAGES = {
     # PrimitiveDataTypes
@@ -132,8 +157,10 @@ ERROR_MESSAGES = {
     # ListTypes
     ARRAY: f'{ARRAY.capitalize()} type must start with "[" and end with "]"',
     LINKED: f'{LINKED.capitalize()} type must start with "[" and end with "]"',
+    HASHMAP: f'{HASHMAP.capitalize()} type must start with "[" and end with "]"',
+    HASHSET: f'{HASHSET.capitalize()} type must start with "[" and end with "]"',
+    TREEMAP: f'{TREEMAP.capitalize()} type must start with "[" and end with "]"',
     LIST: f'{LIST.capitalize()} type must start with "[" and end with "]"',
-    SET: f'{SET.capitalize()} type must start with "[" and end with "]"',
 }
 
 # OTHER
