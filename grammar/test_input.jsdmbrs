@@ -1,12 +1,12 @@
 Database {
-    driver: postgresql
-    database name: jsd_mbrs
-    username: postgres
-    password: root
+    driver: postgresql,
+    database name: jsd_mbrs,
+    username: postgres,
+    password: Purke1994
 }
 
 public class Person {
-    idPerson: id (get, set);
+    idPerson: id (get);
     firstName: string (get, set);
     lastName: string (get, set);
     address: Address 1-1 (get, set);
@@ -42,35 +42,35 @@ public class Person {
     testBoolean: Boolean;
 
     Constructors {
-        default
-        empty
-        [firstName, lastName] // this is a comment
-        [firstName, lastName, address]
-        [firstName, lastName, address, age]
+        default,
+        empty,
+        [firstName, lastName], // this is a comment
+        [firstName, lastName, address],
+        [firstName, lastName, address, age],
         [age]
     }
     Methods {
-        void methodName (school, jobArray)
-        static void staticMethodName (school, jobArray)
-        int newName (lastName, firstName)
-        boolean booleanMethod 
-        string stringMethod
-        float floatMethod
-        double doubleMethod
-        char charMethod
-        date dateMethod
-        time timeMethod
-        datetime datetimeMethod
-        byte byteMethod
-        short shortMethod
-        long longMethod
+        void methodName (school, jobArray),
+        static void staticMethodName (school, jobArray),
+        int newName (lastName, firstName),
+        boolean booleanMethod(),
+        string stringMethod(),
+        float floatMethod(),
+        double doubleMethod(),
+        char charMethod(),
+        date dateMethod(),
+        time timeMethod(),
+        datetime datetimeMethod(),
+        byte byteMethod(),
+        short shortMethod(),
+        long longMethod(),
         static void methodName (jobArray, school)
     }
     toString: yes
 }
 
 public class Address {
-    idAddress: id (get, set);
+    idAddress: id (get);
     street: string;
     number: int;
     city: string;
@@ -78,19 +78,20 @@ public class Address {
     persons: Person list 1-n (get, set);
 
     Constructors {
-        default
+        default,
+	empty
     }
     Methods {}
     toString: no
 }
 
 public class School {
-    idSchool: id (get, set);
+    idSchool: id (get);
     street: string (get, set);
     number: int (get, set);
 
     Constructors {
-        empty
+        empty,
         default
     }
     Methods {}
@@ -98,12 +99,13 @@ public class School {
 }
 
 public class Grade {
-    idGrade: id (get, set);
+    idGrade: id (get);
     street: string (get, set);
     number: int (get, set);
 
     Constructors {
-        default
+        default,
+	empty
     }
     Methods {}
     toString: yes
