@@ -3,8 +3,9 @@ import re
 import string
 from datetime import datetime
 from os import getcwd, listdir, makedirs
-from os.path import basename, commonpath, exists, isdir
+from os.path import basename, commonpath, exists, isdir, join
 from pathlib import Path
+import glob
 
 import src.config as cfg
 
@@ -107,6 +108,20 @@ def find_specific_file_regex(folder_path, regex):
     result_files.sort(reverse=True)
     logging.debug(f'Found {len(result_files)} files matching regex in folder')
     return result_files
+
+def find_java_app_file(folder_path):
+    """
+    Searches for a specific Java application file in the given folder and its subfolders.
+    """
+    pattern = join(folder_path, '**', cfg.SPRING_BOOT_APPLICATION_FILE)
+    logging.debug(f'Searching for Java application file in folder "{folder_path}"')
+    files = glob.glob(pattern, recursive=True)
+    if not files:
+        raise FileNotFoundError(f'Java application file not found in folder "{folder_path}"')
+    elif len(files) > 1:
+        raise Exception(f'Found multiple Java application files in folder "{folder_path}"')
+    logging.debug(f'Found Java application file "{files[0]}" in folder')
+    return Path(files[0])
 
 def set_font(font_name, font_size, bold=False):
     """
