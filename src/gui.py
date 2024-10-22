@@ -97,7 +97,7 @@ class MainWindowGUI:
         self.window.protocol('WM_DELETE_WINDOW', self.on_window_close)
         self.default_font = utils.set_font(cfg.FONT, 11, True)
         self.window.geometry(position_window(self.window, cfg.MAIN_WINDOW_WIDTH, cfg.MAIN_WINDOW_HEIGHT))
-        config_style(self.window, self.default_font)
+        self.window.after(1, lambda: config_style(self.window, self.default_font))
         self.init_window_components()
         self.init_window_binds()
         self.initial_state()
@@ -214,6 +214,7 @@ class MainWindowGUI:
                 logging.warning('No project path selected')
                 return
             
+            self.init_variables()
             self.project_path = project_path
             self.project_name = utils.get_base_name(self.project_path)
             logging.info(f'Checking if folder "{self.project_name}" is a valid Spring Boot application')
@@ -929,9 +930,9 @@ class SaveWindowGUI(tk.Toplevel):
         self.save_window.protocol('WM_DELETE_WINDOW', lambda: self.on_save_window_close(self.save_window))
         self.save_window_font = utils.set_font(cfg.FONT, 11)
         self.save_window.geometry(position_window(self.save_window, cfg.SAVE_WINDOW_WIDTH, cfg.SAVE_WINDOW_HEIGHT))
-        config_style(self.save_window, self.save_window_font)
         self.save_window.focus_set()
         self.save_window.grab_set()
+        self.save_window.after(1, lambda: config_style(self.save_window, self.save_window_font))
         self.init_window_components()
 
     def init_window_components(self):

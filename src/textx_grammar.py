@@ -6,9 +6,10 @@ from textx import TextXSyntaxError, TextXSemanticError, metamodel_from_file, get
 from textx.export import PlantUmlRenderer, metamodel_export, model_export
 
 import src.config as cfg
-import src.grammar_classes as gc
 import src.error_handler as eh
+import src.grammar_classes as gc
 import src.utils as utils
+from src.jinja import Jinja as jinja
 
 
 class Response:
@@ -41,7 +42,7 @@ class SemanticError(TextXSemanticError):
         self.search_value = search_value
 
 
-class TextXGrammar():
+class TextXGrammar:
     """
     Class for handling all kind of work regarding textX grammar files, such as
     generating the metamodel and model, exporting the dot and PlantUML files, doing syntax and semantic checks etc.
@@ -60,6 +61,7 @@ class TextXGrammar():
         """
         try:
             logging.info('Generating metamodel and model')
+            utils.folder_exists(cfg.GRAMMAR_FOLDER)
             project_grammar_folder_path = utils.get_path(project_path, cfg.JSD_MBRS_GENERATOR_FOLDER, cfg.GRAMMAR_FOLDER)
             current_grammar_folder_path = utils.get_path(utils.get_current_path(), cfg.GRAMMAR_FOLDER)
             utils.file_exists(current_grammar_folder_path, cfg.GRAMMAR_FILE)
@@ -67,9 +69,10 @@ class TextXGrammar():
             file_path = utils.get_path(project_grammar_folder_path, grammar_file_name)
             metamodel = self.get_metamodel(self, utils.get_path(cfg.GRAMMAR_FOLDER, cfg.GRAMMAR_FILE))
             model = self.get_model(metamodel, file_path, grammar_file_name)
-            logging.info('Metamodel and model generated successfully')
             self.set_metamodel(self, metamodel)
             self.set_model(self, model)
+            logging.info('Metamodel and model generated successfully')
+            jinja.execute_templates(model, project_path)
             return Response(status=cfg.OK)
         except TextXSyntaxError as e:
             error_msg, near_part, found_part = utils.create_syntax_error_message(e)

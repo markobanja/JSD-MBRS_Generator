@@ -40,7 +40,7 @@ HELP_WINDOW_TITLE = 'JSD-MBRS Generator Help Information'
 HELP_BUTTON_TEXT = f'{CONSOLE_LOG_LEVEL_TAGS["INFO"]} Click on the Help button to get familiar with the JSD-MBRS Generator syntax or open a Spring Boot project and generate files.'
 HELP_WINDOW_WIDTH = 750
 HELP_WINDOW_HEIGHT = 400
-# Save window
+# # Save window
 SAVE_WINDOW_TITLE = 'Save Grammar'
 SAVE_WINDOW_WIDTH = 250
 SAVE_WINDOW_HEIGHT = 150
@@ -57,12 +57,17 @@ ENCAPSULATION_DEFINED_WORDS = ['getter', 'get', 'setter', 'set']
 JSD_MBRS_GENERATOR_FOLDER = 'jsd_mbrs_generator'
 GRAMMAR_FOLDER = 'grammar'
 RESOURCES_FOLDER = 'resources'
+TEMPLATE_FOLDER = 'template'
 EXPORT_FOLDER = 'export'
 EXPORT_DOT_FOLDER = 'dot'
 EXPORT_PLANTUML_FOLDER = 'plantuml'
+PROJECT_JAVA_FOLDER = 'src/main/java'
 # Files
 GRAMMAR_FILE = 'jsd_mbrs_generator_grammar.tx'
 HELP_FILE = 'help.txt'
+SPRING_BOOT_APPLICATION_FILE = '*Application.java'
+JAVA_CLASS_TEMPLATE_FILE = 'java_class.template'
+JAVA_FILE_NAME = '%s.java'
 # Other
 OK = 'OK'
 WARNING = 'WARNING'
