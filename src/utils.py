@@ -6,6 +6,7 @@ from os import getcwd, listdir, makedirs
 from os.path import basename, commonpath, exists, isdir, join
 from pathlib import Path
 import glob
+import json
 
 import src.config as cfg
 
@@ -168,6 +169,29 @@ def detect_build_tool(folder_path):
     logging.debug('No build tool detected in folder')
     return None
 
+def get_import_package_tree(project_path, pattern):
+    """
+    Extracts the import package tree from the given project path.
+    """
+    logging.debug(f'Finding import package tree for project path: "{project_path.as_posix()}"')
+    project_path_str = project_path.as_posix()
+    # Create the regex pattern with a capturing group for everything after the pattern/
+    regex_pattern = rf'{re.escape(pattern)}/(.*)'
+    match = re.search(regex_pattern, project_path_str)
+    if match:
+        package_tree = match.group(1).replace('/', '.')
+        logging.debug(f'Found import package tree: "{package_tree}"')
+        return package_tree
+    logging.debug(f'Failed to find import package tree')
+    return None
+
+def convert_string_to_list(text_value):
+    """
+    Converts a string value to a list.
+    """
+    logging.debug(f'Converting string to list: "{text_value}"')
+    return json.loads(text_value)
+
 def add_punctuation(text, punctuation='!'):
     """
     Adds punctuation to the end of a text string after removing any existing punctuation.
@@ -254,8 +278,9 @@ def extract_property_values_regex(content):
     property_pattern = re.compile(cfg.PROPERTY_VALUE_REGEX)
     group_values = [match.group(1) for match in property_pattern.finditer(content)]
     property_values = [value for value in group_values if value]  # Remove empty values
-    logging.debug(f'Found property values: "{property_values}"')
-    return property_values
+    unique_property_values = list(set(property_values))  # Convert to set and back to list for uniqueness
+    logging.debug(f'Found property values: "{unique_property_values}"')
+    return unique_property_values
 
 def extract_comments_regex(content):
     """
@@ -307,8 +332,12 @@ def check_property_value(property_type, property_value):
         cfg.BOOLEAN: lambda value: cfg.OK if isinstance(value, str) and value.lower() in ('true', 'false') else error(cfg.ERROR_MESSAGES[cfg.BOOLEAN]),
 
         # WrapperDataTypes
+        cfg.BYTE_W: lambda value: cfg.OK if isinstance(int(value), int) and -128 <= int(value) <= 127 else error(cfg.ERROR_MESSAGES[cfg.BYTE_W]),
+        cfg.SHORT_W: lambda value: cfg.OK if isinstance(int(value), int) and -32768 <= int(value) <= 32767 else error(cfg.ERROR_MESSAGES[cfg.SHORT_W]),
+        cfg.CHARACTER_W: lambda value: cfg.OK if isinstance(value, str) and len(value) == 3 and value[0] == '\'' and value[-1] == '\'' else error(cfg.ERROR_MESSAGES[cfg.CHARACTER_W]),
         cfg.INTEGER_W: lambda value: cfg.OK if isinstance(int(value), int) and -2147483648 <= int(value) <= 2147483647 else error(cfg.ERROR_MESSAGES[cfg.INTEGER_W]),
         cfg.FLOAT_W: lambda value: cfg.OK if isinstance(float(value[:-1]), (int, float)) and value.upper().endswith('F') else error(cfg.ERROR_MESSAGES[cfg.FLOAT_W]),
+        cfg.LONG_W: lambda value: cfg.OK if isinstance(int(value[:-1]), int) and -9223372036854775808 <= int(value[:-1]) <= 9223372036854775807 and value.upper().endswith('L') else error(cfg.ERROR_MESSAGES[cfg.LONG_W]),
         cfg.DOUBLE_W: lambda value: cfg.OK if isinstance(float(value[:-1]), (int, float)) and value.upper().endswith('D') else error(cfg.ERROR_MESSAGES[cfg.DOUBLE_W]),
         cfg.BOOLEAN_W: lambda value: cfg.OK if isinstance(value, str) and value.lower() in ('true', 'false') else error(cfg.ERROR_MESSAGES[cfg.BOOLEAN_W]),
         

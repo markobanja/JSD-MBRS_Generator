@@ -53,6 +53,28 @@ class TextXGrammar:
         """
         self.metamodel = None
         self.model = None
+        self.project_path = None
+
+    def set_metamodel(self, metamodel):
+        """
+        Set the metamodel.
+        """
+        logging.debug('Setting metamodel')
+        self.metamodel = metamodel
+
+    def set_model(self, model):
+        """
+        Set the model.
+        """
+        logging.debug('Setting model')
+        self.model = model
+
+    def set_project_path(self, project_path):
+        """
+        Set the project path.
+        """
+        logging.debug(f'Setting project path variable to "{project_path}"')
+        self.project_path = project_path
 
     @classmethod
     def generate(self, project_path, grammar_file_name) -> Response:
@@ -62,7 +84,8 @@ class TextXGrammar:
         try:
             logging.info('Generating metamodel and model')
             utils.folder_exists(cfg.GRAMMAR_FOLDER)
-            project_grammar_folder_path = utils.get_path(project_path, cfg.JSD_MBRS_GENERATOR_FOLDER, cfg.GRAMMAR_FOLDER)
+            self.set_project_path(self, project_path)
+            project_grammar_folder_path = utils.get_path(self.project_path, cfg.JSD_MBRS_GENERATOR_FOLDER, cfg.GRAMMAR_FOLDER)
             current_grammar_folder_path = utils.get_path(utils.get_current_path(), cfg.GRAMMAR_FOLDER)
             utils.file_exists(current_grammar_folder_path, cfg.GRAMMAR_FILE)
             utils.file_exists(project_grammar_folder_path, grammar_file_name)
@@ -72,7 +95,7 @@ class TextXGrammar:
             self.set_metamodel(self, metamodel)
             self.set_model(self, model)
             logging.info('Metamodel and model generated successfully')
-            jinja.execute_templates(model, project_path)
+            jinja.execute_templates(model, self.project_path)
             return Response(status=cfg.OK)
         except TextXSyntaxError as e:
             error_msg, near_part, found_part = utils.create_syntax_error_message(e)
@@ -94,14 +117,14 @@ class TextXGrammar:
             return Response(status=cfg.ERROR, error=e, error_msg=error_msg, error_class='Exception')
 
     @classmethod
-    def export(self, project_path) -> Response:
+    def export(self) -> Response:
         """
         Export the metamodel and model files to specified paths using different (dot and PlantUML) tools.
         NOTE: PlantUML output is not yet available for model files.
         """
         try:
-            metamodel_export_response = self.export_metamodel(self, project_path)
-            model_export_response = self.export_model(self, project_path)
+            metamodel_export_response = self.export_metamodel(self)
+            model_export_response = self.export_model(self)
             
             # Return 'WARNING' if either metamodel or model export failed with warnings
             if metamodel_export_response == cfg.WARNING or model_export_response == cfg.WARNING:
@@ -159,21 +182,7 @@ class TextXGrammar:
         logging.info('Model generated')
         return model
     
-    def set_metamodel(self, metamodel):
-        """
-        Set the metamodel.
-        """
-        logging.debug('Setting metamodel')
-        self.metamodel = metamodel
-
-    def set_model(self, model):
-        """
-        Set the model.
-        """
-        logging.debug('Setting model')
-        self.model = model
-
-    def export_metamodel(self, project_path):
+    def export_metamodel(self):
         """
         Export the metamodel files to specified path using the 'dot' and 'PlantUML' tools.
         """
@@ -181,8 +190,8 @@ class TextXGrammar:
         export_folders = [cfg.EXPORT_DOT_FOLDER, cfg.EXPORT_PLANTUML_FOLDER]
         for folder in export_folders:
             export_folder = utils.get_path(cfg.JSD_MBRS_GENERATOR_FOLDER, cfg.EXPORT_FOLDER, folder)  # e.g. 'export/dot'
-            utils.create_folder(project_path, export_folder)
-            metamodel_path = utils.get_path(project_path, export_folder)
+            utils.create_folder(self.project_path, export_folder)
+            metamodel_path = utils.get_path(self.project_path, export_folder)
             if folder == cfg.EXPORT_DOT_FOLDER:
                 # Export the metamodel using the 'dot' tool
                 logging.info('Exporting metamodel using dot tool')
@@ -205,12 +214,12 @@ class TextXGrammar:
         # Return 'WARNING' if export succeeded with warnings else 'OK'
         return cfg.WARNING if has_warning else cfg.OK
 
-    def export_model(self, project_path):
+    def export_model(self):
         """
         Export the model files to specified path using the 'dot' tool (PlantUML output is not yet available for model files).
         """
         logging.info('Exporting model using dot tool')
-        model_export_path = utils.get_path(project_path, cfg.JSD_MBRS_GENERATOR_FOLDER, cfg.EXPORT_FOLDER, cfg.EXPORT_DOT_FOLDER)
+        model_export_path = utils.get_path(self.project_path, cfg.JSD_MBRS_GENERATOR_FOLDER, cfg.EXPORT_FOLDER, cfg.EXPORT_DOT_FOLDER)
         model_path = utils.get_path(model_export_path, cfg.MODEL_NAME)
         model_export(self.model, model_path)
         result = self.execute_dot_cmd_command(cfg.MODEL_NAME, model_export_path)
@@ -301,6 +310,10 @@ class TextXGrammar:
         self.check_unique_constructors(self, entity)
         self.check_unique_methods(self, entity)
         logging.info(f'Successfully finished semantic checks for class "{entity.name}"')
+        logging.info(f'Updating variables for class "{entity.name}"')
+        self.package_tree(self, entity)
+        self.get_necessary_imports(entity)
+        logging.info(f'Successfully updated variables for class "{entity.name}"')
 
     def property_processor(self, property):
         """
@@ -308,16 +321,22 @@ class TextXGrammar:
         """
         logging.info(f'Updating variables for property "{property.name}"')
         self.add_variables_to_property(property)
+        logging.info(f'Successfully updated variables for property "{property.name}"')
         logging.info(f'Starting semantic checks for property "{property.name}"')
         self.check_property_name(property)
         self.check_id_property_value(property)
         self.check_id_property_encapsulation(property)
         self.check_entity_property(property)
         self.check_property_relationship(property)
+        self.check_property_type_and_list_type(property)
         self.check_constant_and_value(property)
         self.check_constant_and_encapsulation(property)
-        self.check_value_of_constant_property(self, property)
+        self.check_value_of_constant_property(property)
+        self.check_value_of_list_elements(property)
         logging.info(f'Successfully finished semantic checks for property "{property.name}"')
+        logging.info(f'Updating property value for property "{property.name}"')
+        self.update_property_value(property)
+        logging.info(f'Successfully updated property value for property "{property.name}"')
 
     def constructor_processor(self, constructor):
         """
@@ -472,6 +491,56 @@ class TextXGrammar:
                 raise SemanticError(error_message, **get_location(method), search_value=method_name, err_type='unique_methods_error')
             methods.add(method_name)
 
+    # CLASS UPDATE FUNCTIONS
+    def package_tree(self, entity):
+        """
+        Create and add the package tree to the model.
+        """
+        logging.debug('Finding package tree for JSD-MBRS model')
+        model = entity.parent
+        java_folder = utils.get_path(self.project_path, cfg.PROJECT_JAVA_FOLDER)
+        java_app_file_path = utils.find_java_app_file(java_folder)
+        java_app_folder_path = java_app_file_path.parent
+        package_tree = utils.get_import_package_tree(java_app_folder_path, cfg.PROJECT_JAVA_FOLDER)
+        logging.debug(f'Package tree for JSD-MBRS model: "{package_tree}"')
+        model.package_tree = package_tree
+
+    def get_necessary_imports(entity):
+        """
+        Create and add necessary imports to the entity.
+        """
+        logging.debug(f'Finding imports for entity "{entity.name}"')
+        entity.imports = set()
+        model = entity.parent
+        for property in entity.properties:
+            property_type_obj = property.property_type
+            property_type_class = property_type_obj.__class__.__name__
+            # Check if property type is an Entity
+            if property_type_class == 'Entity':
+                import_path = f'{model.package_tree}.{property_type_obj.name}.{property_type_obj.name}'
+                entity.imports.add(import_path)
+                logging.debug(f'Adding import path "{import_path}" for entity "{entity.name}"')
+            if property_type_class == 'DateType':
+                property_type = property_type_obj.type
+                if property_type in cfg.PROPERTY_DATE_IMPORT_MAPPING:
+                    mapped_date_type_import = cfg.PROPERTY_DATE_IMPORT_MAPPING[property_type]
+                    entity.imports.add(mapped_date_type_import)
+                    logging.debug(f'Adding import path "{mapped_date_type_import}" for entity "{entity.name}"')
+            # Check if property has a list type and map it to an import
+            if property.list_type:
+                list_type = property.list_type.type
+                if list_type in cfg.PROPERTY_LIST_IMPORT_MAPPING:
+                    _, mapped_list_type_import = cfg.PROPERTY_LIST_IMPORT_MAPPING[list_type]
+                    for item in mapped_list_type_import:
+                        entity.imports.add(item)
+                    logging.debug(f'Adding import path "{mapped_list_type_import}" for entity "{entity.name}"')
+            if property.relationship and property_type_class == 'Entity':
+                relationship = property.relationship
+                if relationship in cfg.PROPERTY_RELATIONSHIP_MAPPING:
+                    mapped_relationship_import = cfg.PROPERTY_RELATIONSHIP_MAPPING[relationship]
+                    entity.imports.add(mapped_relationship_import)
+                    logging.debug(f'Adding import path "{mapped_relationship_import}" for entity "{entity.name}"')
+
     # PROPERTY FUNCTIONS
     def add_variables_to_property(property):
         """
@@ -563,6 +632,18 @@ class TextXGrammar:
             error_message = cfg.PROPERTY_RELATIONSHIP_ERROR % (property.name)
             logging.error(error_message)
             raise SemanticError(error_message, **get_location(property), search_value=search_values, err_type='property_relationship_error')
+        
+    def check_property_type_and_list_type(property):
+        """
+        Check if the property type and list type are valid.
+        Raise a SemanticError if the conditions are not met.
+        """
+        property_type_class = property.property_type.__class__.__name__
+        if property.list_type and property.list_type.type in [cfg.ARRAY, cfg.LINKED, cfg.HASHMAP, cfg.HASHSET, cfg.TREEMAP] and property_type_class not in ['Entity', 'OtherDataType', 'WrapperDataType']:
+            search_values = [property.name, property.property_type.type, property.list_type.type]
+            error_message = cfg.PROPERTY_TYPE_AND_LIST_TYPE_ERROR % (property.name, property.property_type.type, property.list_type.type)
+            logging.error(error_message)
+            raise SemanticError(error_message, **get_location(property), search_value=search_values, err_type='property_type_and_list_type')
     
     def check_constant_and_value(property):
         """
@@ -586,7 +667,7 @@ class TextXGrammar:
             logging.error(error_message)
             raise SemanticError(error_message, **get_location(property.encapsulation), search_value=search_values, err_type='constant_and_encapsulation_error')
 
-    def check_value_of_constant_property(self, property):
+    def check_value_of_constant_property(property):
         """
         Check if the constant value of a property is valid for its type.
         Raise a SemanticError if the value is invalid.
@@ -605,22 +686,22 @@ class TextXGrammar:
                 error_message = cfg.CONSTANT_PROPERTY_VALUE_ERROR % (value, property.name, checking_type, response)
                 logging.error(error_message)
                 raise SemanticError(error_message, **get_location(property), search_value=search_value, err_type='property_value_error')
-            
-            # Check list elements
-            if property.list_type:
-                self.check_value_of_list_elements(property, value)
-
         except SemanticError as e:
             raise
         except Exception as e:
             logging.error(f'Error checking property "{property.name}": {str(e)}')
             raise
 
-    def check_value_of_list_elements(property, value):
+    def check_value_of_list_elements(property):
         """
         Check if the each value of a list type property is valid for its type.
         Raise a SemanticError if an element is invalid.
         """
+        # Skip if property is not constant or list type is not set
+        if not property.constant or not property.list_type:
+            return
+        
+        value = property.property_value.value.rstrip()
         list_type = property.list_type.type
         property_type = property.property_type.type
         logging.debug(f'Checking list elements for property "{property.name}" with type "{property_type}" and value "{value}"')
@@ -633,6 +714,72 @@ class TextXGrammar:
                 error_message = cfg.LIST_ELEMENTS_ERROR % (element, value, list_type, property.name, property_type, response)
                 logging.error(error_message)
                 raise SemanticError(error_message, **get_location(property), search_value=search_value, err_type='list_value_error')
+
+    # PROPERTY UPDATE FUNCTIONS 
+    def update_property_value(property):
+        """
+        Updates the value of a property based on its type.
+        """
+        def format_statement(index, value, key_value_pair=False):
+            method = 'add' if not key_value_pair else 'put'
+            if property_type == cfg.STRING:
+                return f'{method}("{index}", "{value}")' if key_value_pair else f'{method}("{value}")'
+            elif property_type in [cfg.CHAR, cfg.CHARACTER_W]:
+                return f"{method}(\"{index}\", '{value}')" if key_value_pair else f"{method}('{value}')"
+            else:
+                return f'{method}("{index}", {value})' if key_value_pair else f'{method}({value})'
+
+        def generate_method_statements(property_type, property_value_list, key_value_pair=False):
+            """
+            Generates a string of method statements (add or put) for a given property type and property value list.
+            """
+            logging.debug(f'Generating method statements for property type "{property_type}" and property value list "{property_value_list}"')
+            return '; '.join([format_statement(index, value, key_value_pair) for index, value in enumerate(property_value_list)])
+        
+        def update_property_list_value(mapped_list_type, property_type, property_value, key_value_pair=False):
+            """
+            Updates the value of a property with a list type.
+            """
+            logging.debug(f'Updating property list value for property "{property.name}" with mapped list type "{mapped_list_type}" and property type "{property_type}"')
+            property_value = str(property_value).replace("'", '"')
+            property_value_list = utils.convert_string_to_list(property_value)
+            method_statements = generate_method_statements(property_type, property_value_list, key_value_pair)
+            if key_value_pair:
+                updated_property_value = f'new {mapped_list_type}<String, {property_type.capitalize()}>() {{{{ {method_statements}; }}}}'
+            else:
+                updated_property_value = f'new {mapped_list_type}<{property_type.capitalize()}>() {{{{ {method_statements}; }}}}'
+            return updated_property_value
+
+        def handle_list_type_property(property, property_type, property_value):
+            """
+            Handles list type properties by updating the property value based on the list type and property type.
+            """
+            list_type = property.list_type.type
+            if list_type == cfg.LIST:
+                logging.debug(f'Handling list type property "{property.name}" with list type "{list_type}" and property value "{property_value}"')
+                property.property_value.value = property_value.replace('[', '{').replace(']', '}')
+            elif list_type in [cfg.ARRAY, cfg.LINKED, cfg.HASHSET,]:
+                mapped_list_type, _ = cfg.PROPERTY_LIST_IMPORT_MAPPING[list_type]
+                updated_value = update_property_list_value(mapped_list_type, property_type, property_value)
+                logging.debug(f'Updating property value for property "{property.name}" with mapped list type "{mapped_list_type}" and updated value "{updated_value}"')
+                property.property_value.value = updated_value
+            elif list_type in [cfg.HASHMAP, cfg.TREEMAP]:
+                mapped_list_type, _ = cfg.PROPERTY_LIST_IMPORT_MAPPING[list_type]
+                updated_value = update_property_list_value(mapped_list_type, property_type, property_value, key_value_pair=True)
+                logging.debug(f'Updating property value for property "{property.name}" with mapped list type "{mapped_list_type}" and updated value "{updated_value}"')
+                property.property_value.value = updated_value
+
+        logging.debug(f'Updating property value for property "{property.name}"')
+        if not property.property_value:
+            return
+        property_type = property.property_type.type
+        property_value = str(property.property_value.value)
+        list_type_class = property.list_type.__class__.__name__
+
+        if list_type_class == 'ListType':
+            handle_list_type_property(property, property_type, property_value)
+        elif property_type in [cfg.BOOLEAN, cfg.BOOLEAN_W]:
+            property.property_value.value = property_value.lower()
 
     # CONSTRUCTOR FUNCTIONS
     def get_constructor_name(constructor):

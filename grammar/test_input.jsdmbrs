@@ -2,57 +2,71 @@ Database {
     driver: postgresql,
     database name: jsd_mbrs,
     username: postgres,
-    password: Purke1994
+    password: rootPassword1
 }
 
 public class Person {
-    idPerson: id (get);
-    firstName: string (get, set);
+    idPerson: id (getter);
+    testVariable: string list n-1 (get, setter);
+    testSomething: string list n-1 (get, set);
+    firstName: string list n-n (get, setter);
     lastName: string (get, set);
-    address: Address 1-1 (get, set);
-    age: int (get, set);
+    address: Address 1-1 (get);
+    age: int list (setter);
     weight: float (get, set);
-    height: double (get, set);
-    bloodType: char (get, set);
+    height: double list 1-1 (get, set);
+    bloodType: char (getter);
     isEmployee: boolean (get, set);
-    byteConstant: constant byte (get) = 127;
+    byteConstant: const byte (get) = 127;
     shortConstant: constant short (get) = -32768;
     longConstant: constant long (get) = 0L;
     stringConstant: constant string (get) = "00";
     intConstant: constant int (get) = 0;
     floatConstant: constant float (get) = 00f;
-    doubleConstant: constant double (get) = 00d;
-    booleanConstant: constant boolean (get) = true;
+    doubleConstant: constant double (get) = 00D;
+    booleanConstant: constant boolean (get) = TRUE;
     charConstant: constant char (get) = 'c';
     employmentNumber: constant int (get) = 123; // this is a comment
-    school: School 1-1 (get, set);
+    school: School list 1-n (get, set);
     birthday: date (get, set);
+    test: int list 1-n (get, set);
     timeFormat: time (get, set);
     dateOfEmployment: datetime (get, set);
-    jobArray: string array (get, set);
-    positionLinked: string linked (get, set);
-    testList: int list (get, set);
-    byteVariable: byte (get, set);
+    jobArray: const string linked (get) = ["test", "two", "three"];
+    positionLinked: const Integer linked (get) = [1, 2, 3];
+    charLinked: const Character linked (get) = ['1', '2', '3'];
+    jobArrayArray: const string array (get) = ["test", "two", "three"];
+    positionLinkedArray: const Integer array (get) = [1, 2, 3];
+    charLinkedArray: const Character array (get) = ['1', '2', '3'];
+    testList: const int list (get) = [1, 2, 3];
+    byteVariable: Byte hashmap (get, set);
     shortVariable: short (get, set);
     longVariable: long (get, set);
     testInteger: Integer;
-    testIntegerConstant: constant Integer (get) = 123; // this is a comment
+    testIntegerConstant: constant Integer (getter) = 123; // this is a comment
     testFloat: Float;
+    testa: int list 1-n (get, set);
     testDouble: Double;
     testBoolean: Boolean;
+    testByte: Byte;
+    testShort: Short;
+    testCharacter: Character;
+    testLong: Long;
 
     Constructors {
-        default,
         empty,
-        [firstName, lastName], // this is a comment
-        [firstName, lastName, address],
-        [firstName, lastName, address, age],
-        [age]
+        [lastName, testDouble], // this is a comment
+        [lastName, address],
+        [lastName, address, age],
+        [age],
+        default,
+	[address, lastName]
     }
     Methods {
         void methodName (school, jobArray),
+	void methodName (jobArray, school),
         static void staticMethodName (school, jobArray),
-        int newName (lastName, firstName),
+        int newName (lastName),
         boolean booleanMethod(),
         string stringMethod(),
         float floatMethod(),
@@ -63,8 +77,7 @@ public class Person {
         datetime datetimeMethod(),
         byte byteMethod(),
         short shortMethod(),
-        long longMethod(),
-        static void methodName (jobArray, school)
+        long longMethod()
     }
     toString: yes
 }
@@ -75,6 +88,7 @@ public class Address {
     number: int;
     city: string;
     country: string;
+    firstName: string (get, set);
     persons: Person list 1-n (get, set);
 
     Constructors {

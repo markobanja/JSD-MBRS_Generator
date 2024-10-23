@@ -98,7 +98,7 @@ PrimitiveDataTypes:
 ;
 
 WrapperDataTypes:
-    'Integer' | 'Float' | 'Double' | 'Boolean'
+    'Byte' | 'Short' | 'Character' | 'Integer' | 'Float' | 'Long' | 'Double' | 'Boolean'
 ;
 
 OtherDataTypes:
