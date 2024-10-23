@@ -199,6 +199,7 @@ SQL_DATABASE_PASSWORD_ERROR = 'To create a strong password, ensure it is at leas
 
 # REGEX
 PLANTUML_REGEX = r'^plantuml-\d+\.\d+\.\d+\.jar$'
+GOOGLE_FORMAT_REGEX = r'^google-java-format-\d+\.\d+\.\d+\-all-deps.jar$'
 JSD_MBRS_GENERATOR_REGEX = r'\w+\.jsdmbrs$'
 DATE_REGEX = r'%Y-%m-%d'
 TIME_REGEX = r'%H:%M:%S'
@@ -228,26 +229,6 @@ MAP_JAVA_TYPES = {
     HASHMAP: 'HashMap',
     HASHSET: 'HashSet',
     TREEMAP: 'TreeMap'
-}
-# Import mappings
-UUID_IMPORT = 'java.util.UUID'
-LIST_IMPORT_MAPPING = {
-    ARRAY: (MAP_JAVA_TYPES[ARRAY], ['java.util.ArrayList', 'java.util.List']),
-    LINKED: (MAP_JAVA_TYPES[LINKED], ['java.util.LinkedList', 'java.util.List']),
-    HASHMAP: (MAP_JAVA_TYPES[HASHMAP], ['java.util.HashMap', 'java.util.Map']),
-    HASHSET: (MAP_JAVA_TYPES[HASHSET], ['java.util.HashSet', 'java.util.Set']),
-    TREEMAP: (MAP_JAVA_TYPES[TREEMAP], ['java.util.TreeMap', 'java.util.Map']),
-}
-PROPERTY_DATE_IMPORT_MAPPING = {
-    DATE: 'java.time.LocalDate',
-    TIME: 'java.time.LocalTime',
-    DATETIME: 'java.time.LocalDateTime',
-}
-PROPERTY_RELATIONSHIP_MAPPING = {
-    '1-1': 'jakarta.persistence.OneToOne',
-    '1-n': 'jakarta.persistence.OneToMany',
-    'n-1': 'jakarta.persistence.ManyToOne',
-    'n-n': 'jakarta.persistence.ManyToMany',
 }
 LIST_TYPE_MAPPING = {
     LIST: '{}[]',

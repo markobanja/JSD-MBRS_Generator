@@ -1,4 +1,5 @@
 import logging
+import subprocess
 
 import jinja2
 
@@ -86,6 +87,23 @@ class Jinja:
         file_path = utils.get_path(folder_path, entity.name, java_file_name)
         logging.info(f'Writing content to file "{java_file_name}"')
         utils.write_to_file(file_path, content)
+        self.format_java_file(folder_path, file_path)
+
+    def format_java_file(folder_path, file_path):
+        utils.folder_exists(cfg.RESOURCES_FOLDER)
+
+        # Find the Google Java Format jar file in the resources folder
+        google_format_file_name = utils.find_specific_file_regex(cfg.RESOURCES_FOLDER, cfg.GOOGLE_FORMAT_REGEX)
+        if not google_format_file_name:
+            logging.warning(f'No Google Java Format jar file found in the "{cfg.RESOURCES_FOLDER}" folder')
+            return
+        elif len(google_format_file_name) > 1:
+            logging.warning(f'More than one Google Java Format jar file found in the "{cfg.RESOURCES_FOLDER}" folder. Using the newest one: {google_format_file_name[0]}')
+
+        current_directory = utils.get_current_path()
+        google_format_jar_path = utils.get_path(current_directory, cfg.RESOURCES_FOLDER, google_format_file_name[0])
+        command = f'java -jar {google_format_jar_path} --replace {file_path}'
+        subprocess.run(command, shell=True, check=True, cwd=folder_path, capture_output=True, text=True)
 
 
 class JinjaFilters:
