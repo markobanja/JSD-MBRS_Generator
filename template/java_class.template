@@ -8,12 +8,19 @@
 {% endfor %}
 {{ 'import org.slf4j.Logger;' }}
 {{ 'import org.slf4j.LoggerFactory;' }}
+{{ 'import jakarta.persistence.Entity;' }}
+{{ 'import jakarta.persistence.Table;' }}
+{{ 'import jakarta.persistence.Id;' }}
+{{ 'import jakarta.persistence.SequenceGenerator;' }}
+{{ 'import jakarta.persistence.GeneratedValue;' }}
+{{ 'import jakarta.persistence.GenerationType;' }}
+{{ 'import io.swagger.v3.oas.annotations.media.Schema;' }}
 {# // Imports #}
 
 {# Class #}
 {{ '@Entity' }}
 {{ '@Table' }}
-{{ '@Schema(name = "' + entity.name + '", description = "A ' + entity.name | lowercase + ' entity")' }}
+{{ '@Schema(name = "' + entity.name + '", description = "' + entity.name | lowercase | description + '")' }}
 {{ entity.class_modifier + ' ' if entity.class_modifier else '' }}{{ 'class ' + entity.name + ' {' }}
 
     {# Logger #}
@@ -90,6 +97,35 @@
     {% endif %}
     {# // Constructors #}
 
+    {# // Methods #}
+    {% if entity.methods %}
+    {{ '// METHODS' }}
+    {% for method in entity.methods %}
+    {% if method.method_modifier == 'private' %}
+    {{ '@SuppressWarnings("unused")' }}
+    {% endif %}
+    {{ method.method_modifier + ' ' if method.method_modifier else ''}}{{'static ' if method.static else '' }}{{ method | method_type + ' ' + method.name + '(' }}
+        {%- for property in method.property_list -%}
+        {%- if property.list_type -%}
+            {%- set property_type_template = property.list_type | map_list_type -%}
+            {%- set property_type = property_type_template.format(property.property_type | java_type) -%}
+            {%- else -%}
+            {%- set property_type = property.property_type | java_type -%}
+            {%- endif -%}
+            {{ property_type + ' ' + property.name }}{% if not loop.last %}{{ ', ' }}{% endif %}
+        {%- endfor -%}
+    {{ ') {' }}
+    {% if method.method_declaration.method_type == 'void' %}
+        {{ 'System.out.println("Hello World!");' }}
+    {% else %}
+        {{ 'return ' + method | method_default_value  + ';' }}
+    {% endif %}
+    {{ '}' }}
+    {% if not loop.last %}{{ '\n' }}{% endif %}
+    {% endfor %}
+    {% endif %}
+    {# // Methods #}
+
     {# Getters #}
     {{ '// GETTERS' }}
     {% for property in entity.properties %}
@@ -127,8 +163,8 @@
     {# // Setters #}
 
     {# toString #}
-    {{ '// TO STRING' }}
     {% if entity.to_string == 'yes' %}
+    {{ '// TO STRING' }}
     {{ '@Override' }}
     {{ 'public String toString() {' }}
         {{ 'return "' + entity.name + ' {' }}{% for property in entity.properties %}{{ property.name + '=" + ' + property.name }}{% if not loop.last %}{{ ' + ", ' }}{% endif %}{% endfor %}{{ ' + "}";' }}

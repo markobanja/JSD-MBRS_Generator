@@ -7,6 +7,7 @@ from ttkthemes import ThemedStyle
 
 import src.config as cfg
 import src.utils as utils
+from src.build_tool_dependency import BuildToolDependency
 from src.textx_grammar import TextXGrammar as tg
 
 
@@ -68,11 +69,12 @@ class MainWindowGUI:
         """
         Initialize the variables used in the main window.
         """
-        logging.info('Initializing main window variables')
+        logging.debug('Initializing main window variables')
         self.save_window_instance = None  # To track the instance of the save window
         self.help_window_instance = None  # To track the instance of the help window
         self.project_path = None
         self.project_name = None
+        self.build_tool = None
         self.grammar_file_name = None
         self.grammar_file_content = None
         self.busy = False
@@ -178,6 +180,8 @@ class MainWindowGUI:
         self.text_editor.bind('<KeyRelease>', self.on_type_text)
         self.text_editor.bind('<Control-s>', self.on_save)
         self.text_editor.bind('<Control-v>', self.on_paste)
+        # TODO: add different options while typing (should be a new feature but not for this sprint)
+        # TODO: add remove line 'Control-l'
         logging.info('Text editor widget initialized')
 
     def init_canvas_circle(self):
@@ -218,11 +222,15 @@ class MainWindowGUI:
             self.project_path = project_path
             self.project_name = utils.get_base_name(self.project_path)
             logging.info(f'Checking if folder "{self.project_name}" is a valid Spring Boot application')
-            build_tool, is_spring_boot = utils.is_spring_boot_application(self.project_path)
+            self.build_tool, is_spring_boot = utils.is_spring_boot_application(self.project_path)
             if not is_spring_boot:
                 self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["WARN"]} The selected folder "{self.project_name}" is NOT a valid Spring Boot application!', fg=WARNING_COLOR)
                 logging.warning(f'Folder "{self.project_name}" is NOT a valid Spring Boot application')
                 self.initial_state()
+                return
+
+            # Check if the project dependencies are valid
+            if not self.check_project_dependencies():
                 return
 
             self.working_state()
@@ -231,7 +239,7 @@ class MainWindowGUI:
             self.text_editor.insert(tk.INSERT, content)
             self.update_line_numbers()
             self.set_color_to_text()
-            self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} The selected folder "{self.project_name}" is a valid {build_tool} Spring Boot application.', fg=INFORMATION_COLOR)
+            self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} The selected folder "{self.project_name}" is a valid {self.build_tool} Spring Boot application.', fg=INFORMATION_COLOR)
             logging.info(f'Folder "{self.project_name}" is a valid Spring Boot application')
         except Exception as e:
             error_message = f'Failed to open project: {str(e)}'
@@ -467,6 +475,33 @@ class MainWindowGUI:
         self.text_editor.config(state=tk.NORMAL, cursor='ibeam', background=WORKING_BACKGROUND_COLOR)
         logging.debug('Main window working state set')
 
+    def check_project_dependencies(self):
+        """
+        Checks the dependencies in the path of the build configuration file.
+        Returns True if dependencies are valid.
+        """
+        logging.info('Checking project dependencies')
+        build_tool_dependency = BuildToolDependency(self.project_name, self.project_path, self.build_tool)
+        response = build_tool_dependency.check_dependencies()
+        if response.status == cfg.OK:
+            logging.info('Project dependencies are valid')
+            return True
+        elif response.status == cfg.WARNING:
+            logging.warning(response.message)
+            self.initial_state()
+            self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["WARN"]} {utils.add_punctuation(response.message)}', fg=WARNING_COLOR)
+            return False
+        elif response.status is cfg.ERROR:
+            logging.error(response.message)
+            message = f'{response.message}\n\nWould you like to add the missing dependencies?'
+            if messagebox.askyesno('Missing dependencies', message):
+                build_tool_dependency.add_missing_dependencies()
+                logging.info('Missing dependencies added')
+                return True
+            else:
+                self.initial_state()
+                raise Exception(response.message)
+
     def create_necessary_folders(self):
         """
         Create the necessary folders in the project folder if they don't exist.
@@ -651,7 +686,7 @@ class MainWindowGUI:
             start_index = f'{line_number}.0'
             end_index = f'{line_number}.end'
             line_text = self.text_editor.get(start_index, end_index)
-            return near_part in line_text
+            return near_part in line_text if near_part else False
 
         near_part = response.near_part
         penultimate_line_number = response.error.line - 2
@@ -708,11 +743,12 @@ class MainWindowGUI:
                 if start_index == -1:
                     break
                 end_index = start_index + len(search_value)
-                logging.debug(f'Highlighting {search_value} from {start_index} to {end_index} in line {error_line}')
-                self.remove_tags_text_editor(f'{error_line}.{start_index}', f'{error_line}.{end_index}')
-                self.text_editor.tag_configure(ERROR_COLOR, foreground=ERROR_COLOR)
-                self.text_editor.tag_add(ERROR_COLOR, f'{error_line}.{start_index}', f'{error_line}.{end_index}')
-                start_index += len(search_value)  # Move to the next occurrence
+                if self.is_whole_word(f'{error_line}.{start_index}', f'{error_line}.{end_index}'):
+                    logging.debug(f'Highlighting {search_value} from {start_index} to {end_index} in line {error_line}')
+                    self.remove_tags_text_editor(f'{error_line}.{start_index}', f'{error_line}.{end_index}')
+                    self.text_editor.tag_configure(ERROR_COLOR, foreground=ERROR_COLOR)
+                    self.text_editor.tag_add(ERROR_COLOR, f'{error_line}.{start_index}', f'{error_line}.{end_index}')
+                start_index = end_index
 
     def handle_error_type(self, response, search_value):
         """
