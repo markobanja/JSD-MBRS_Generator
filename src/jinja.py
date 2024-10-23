@@ -60,13 +60,7 @@ class Jinja:
         Register Jinja filters.
         """
         logging.debug('Registering Jinja filters')
-        jinja_env.filters['lowercase'] = JinjaFilters.lowercase
-        jinja_env.filters['uppercase_first'] = JinjaFilters.uppercase_first
-        jinja_env.filters['java_type'] = JinjaFilters.java_type
-        jinja_env.filters['map_list_type'] = JinjaFilters.map_list_type
-        jinja_env.filters['map_relationship_type'] = JinjaFilters.map_relationship_type
-        jinja_env.filters['get_default_value'] = JinjaFilters.get_default_value
-        jinja_env.filters['constructor_properties'] = JinjaFilters.constructor_properties
+        JinjaFilters(jinja_env)
         logging.debug('Jinja filters registered successfully')
 
     def execute_template(self, model, entity):
@@ -98,49 +92,113 @@ class JinjaFilters:
     """
     Class for handling Jinja filters
     """
-    def lowercase(word):
+    def __init__(self, jinja_env):
+        """
+        Constructor for the JinjaFilters class.
+        """
+        self.jinja_env = jinja_env
+        filters = {
+            'lowercase': self.lowercase,
+            'uppercase_first': self.uppercase_first,
+            'description': self.description,
+            'method_type': self.method_type,
+            'method_default_value': self.method_default_value,
+            'java_type': self.java_type,
+            'map_list_type': self.map_list_type,
+            'map_relationship_type': self.map_relationship_type,
+            'get_default_value': self.get_default_value,
+            'constructor_properties': self.constructor_properties
+        }
+        self.jinja_env.filters.update(filters)
+
+    def lowercase(self, word):
         """
         Converts the given word to lowercase.
         """
         logging.debug(f'Converting "{word}" to lowercase')
         return str(word).lower()
     
-    def uppercase_first(word):
+    def uppercase_first(self, word):
         """
         Capitalizes the first letter of the given word leaving the rest.
         """
         logging.debug(f'Capitalizing first letter of "{word}" leaving the rest')
         return str(word[0]).upper() + word[1:]
     
-    def java_type(property_type):
+    def description(self, word):
         """
-        Convert the given property type to Java type.
+        Returns the description of the given word.
         """
-        logging.debug(f'Converting data type "{property_type}" to Java type')
-        if property_type == 'void': return property_type
+        prefix = 'An' if word[0] in cfg.VOWELS else 'A'
+        description = f'{prefix} {word} entity'
+        logging.debug(f'Returning description "{description}"')
+        return description
+    
+    def method_type(self, method):
+        """
+        Convert the given method type to Java type.
+        """
+        method_declaration = method.method_declaration
+        method_type = method_declaration.method_type
+        logging.debug(f'Converting method type "{method_type}" to Java type')
+        if isinstance(method_type, gc.IDType):
+            return 'UUID'
+        if type(method_declaration).__name__ == 'ListMethodType':
+            java_list_type = self.map_method_list_type(method_declaration.list_type)
+            java_method_type = self.java_type(method_declaration)
+            list_type = java_list_type.format(java_method_type)
+            return list_type
+        if type(method_type).__name__ == 'Entity':
+            return method_type.name
+        return self.java_type(method_type)
+        
+    def method_default_value(self, method):
+        """
+        Return the default value of the given method.
+        """
+        method_declaration = method.method_declaration
+        method_type = method_declaration.method_type
+        logging.debug(f'Returning default value for method "{method_type}"')
+        if type(method_declaration).__name__ == 'ListMethodType':
+            java_list_type = self.map_method_list_default_value(method_declaration.list_type)
+            java_method_type = self.java_type(method_declaration)
+            list_type = java_list_type.format(java_method_type)
+            return list_type
+        if type(method_type).__name__ == 'Entity':
+            return f'new {method_type.name}()'
+        return method_type.default_value
+    
+    def java_type(self, type_object):
+        """
+        Convert the given type from provided object to Java type.
+        """
+        logging.debug(f'Converting data type "{type_object}" to Java type')
+        if type_object == 'void': return type_object
 
-        if isinstance(property_type, gc.IDType):
+        if isinstance(type_object, gc.IDType):
             return {
                 cfg.ID: cfg.STRING.capitalize(),
                 cfg.IDENTIFIER: cfg.STRING.capitalize(),
                 cfg.UNIQUE_ID: cfg.STRING.capitalize(),
                 cfg.KEY: cfg.STRING.capitalize(),
                 cfg.PRIMARY_KEY: cfg.STRING.capitalize(),
-            }.get(property_type.type, property_type.type)
+            }.get(type_object.type, type_object.type)
         
-        elif isinstance(property_type, gc.OtherDataType):
+        elif isinstance(type_object, gc.OtherDataType):
             return {
+                cfg.STR: cfg.STRING.capitalize(),
                 cfg.STRING: cfg.STRING.capitalize(),
-            }.get(property_type.type, property_type.type)
+                cfg.STRING_C: cfg.STRING.capitalize(),
+            }.get(type_object.type, type_object.type)
         
-        elif isinstance(property_type, gc.DateType):
+        elif isinstance(type_object, gc.DateType):
             return {
                 cfg.DATE: cfg.MAP_JAVA_TYPES[cfg.DATE],
                 cfg.TIME: cfg.MAP_JAVA_TYPES[cfg.TIME],
                 cfg.DATETIME: cfg.MAP_JAVA_TYPES[cfg.DATETIME],
-            }.get(property_type.type, property_type.type)
+            }.get(type_object.type, type_object.type)
         
-        elif isinstance(property_type, gc.ListType):
+        elif isinstance(type_object, gc.ListType):
             return {
                 cfg.ARRAY: cfg.MAP_JAVA_TYPES[cfg.ARRAY],
                 cfg.LINKED: cfg.MAP_JAVA_TYPES[cfg.LINKED],
@@ -148,45 +206,64 @@ class JinjaFilters:
                 cfg.HASHSET: cfg.MAP_JAVA_TYPES[cfg.HASHSET],
                 cfg.TREEMAP: cfg.MAP_JAVA_TYPES[cfg.TREEMAP],
                 cfg.LIST: cfg.LIST.capitalize(),
-            }.get(property_type.type, property_type.type)
+            }.get(type_object.type, type_object.type)
         
-        elif type(property_type).__name__ == 'Entity':
-            return {}.get(property_type.name, property_type.name)
+        elif type(type_object).__name__ == 'Entity':
+            return {}.get(type_object.name, type_object.name)
+        
+        elif type(type_object).__name__ == 'ListMethodType':
+            if type(type_object.method_type).__name__ == 'Entity':
+                return {}.get(type_object.method_type.name, type_object.method_type.name)
+            return {
+                cfg.BYTE: cfg.BYTE_W,
+                cfg.SHORT: cfg.SHORT_W,
+                cfg.CHAR: cfg.CHARACTER_W,
+                cfg.INT: cfg.INTEGER_W,
+                cfg.FLOAT: cfg.FLOAT_W,
+                cfg.LONG: cfg.LONG_W,
+                cfg.DOUBLE: cfg.DOUBLE_W,
+                cfg.BOOLEAN: cfg.BOOLEAN_W,
+                cfg.STR: cfg.STRING.capitalize(),
+                cfg.STRING: cfg.STRING.capitalize(),
+                cfg.STRING_C: cfg.STRING.capitalize(),
+            }.get(type_object.method_type.type, type_object.method_type.type)
         
         else:
-            return {}.get(property_type.type, property_type.type)
+            return {}.get(type_object.type, type_object.type)
 
-    def map_list_type(list_type):
+    def map_list_type(self, list_type):
         """
         Maps a list type to the corresponding Java type.
         """
-        list_type_mapping = {
-            'list': '{}[]',
-            'array': 'List<{}>',
-            'linked': 'List<{}>',
-            'hashmap': 'Map<String, {}>',
-            'hashset': 'Set<{}>',
-            'treemap': 'Map<String, {}>'
-        }
-        mapped_list_type = list_type_mapping.get(list_type.type, '{}')
+        mapped_list_type = cfg.LIST_TYPE_MAPPING.get(list_type.type, '{}')
         logging.debug(f'Mapping list type "{list_type.type}" to "{mapped_list_type}"')
         return mapped_list_type
     
-    def map_relationship_type(relationship_type):
+    def map_method_list_type(self, list_type):
+        """
+        Maps a method list type to the corresponding Java type.
+        """
+        mapped_list_type = cfg.METHOD_LIST_TYPE_MAPPING.get(list_type.type, '{}')
+        logging.debug(f'Mapping list type "{list_type.type}" to "{mapped_list_type}"')
+        return mapped_list_type
+    
+    def map_method_list_default_value(self, list_type):
+        """
+        Maps a method list default value to the corresponding Java value.
+        """
+        mapped_list_type = cfg.METHOD_LIST_DEFAULT_VALUE_MAPPING.get(list_type.type, '{}')
+        logging.debug(f'Mapping list type "{list_type.type}" to "{mapped_list_type}"')
+        return mapped_list_type
+
+    def map_relationship_type(self, relationship_type):
         """
         Maps a relationship type to the corresponding Java type.
         """
-        relationship_type_mapping = {
-            '1-1': '@OneToOne',
-            '1-n': '@OneToMany',
-            'n-1': '@ManyToOne',
-            'n-n': '@ManyToMany',
-        }
-        mapped_relationship_type = relationship_type_mapping.get(relationship_type)
+        mapped_relationship_type = cfg.RELATIONSHIP_TYPE_MAPPING.get(relationship_type)
         logging.debug(f'Mapping relationship type "{relationship_type}" to "{mapped_relationship_type}"')
         return mapped_relationship_type
     
-    def get_default_value(property):
+    def get_default_value(self, property):
         """
         Returns the default value for a given property.
         """
@@ -198,7 +275,10 @@ class JinjaFilters:
 
         if property_type_class == 'Entity':
             if list_type_class == 'ListType':
-                return str(list_type.default_value).format(property_type.name)
+                default_value = str(list_type.default_value)
+                if list_type.type == 'list':
+                    default_value = 'new {}[0]'  # Change the default value to an empty list for Entities
+                return str(default_value).format(property_type.name)
             return f'new {property_type.name}()'
 
         if list_type_class == 'ListType':
@@ -207,7 +287,7 @@ class JinjaFilters:
 
         return property_type.default_value
 
-    def constructor_properties(property_list):
+    def constructor_properties(self, property_list):
         """
         Returns a list of properties that are eligible for inclusion in a constructor.
         """

@@ -46,11 +46,50 @@ SAVE_WINDOW_WIDTH = 250
 SAVE_WINDOW_HEIGHT = 150
 # Predefined words
 RULE_DEFINED_WORDS = ['Database', 'class', 'Constructors', 'Methods', 'toString']
-GRAMMAR_DEFINED_WORDS = ['driver', 'database name', 'username', 'password', 'public', 'abstract', 'final', 'empty', 'default', 'static', 'id', 'identifier', 'uniqueId', 'key', 'primaryKey', 'yes', 'no', '1-1', '1-n', 'n-1', 'n-n']
-TYPE_DEFINED_WORDS = ['byte', 'short', 'char', 'int', 'float', 'long', 'double', 'boolean', 'string', 'date', 'time', 'datetime']
+GRAMMAR_DEFINED_WORDS = ['driver', 'database name', 'username', 'password', 'public', 'abstract', 'final', 'private', 'protected', 'empty', 'default', 'static', 'id', 'identifier', 'uniqueId', 'key', 'primaryKey', 'yes', 'no', '1-1', '1-n', 'n-1', 'n-n']
+TYPE_DEFINED_WORDS = ['byte', 'short', 'char', 'int', 'float', 'long', 'double', 'boolean', 'str', 'string', 'String', 'date', 'time', 'datetime']
 WRAPPER_TYPE_DEFINED_WORDS = ['Byte', 'Short', 'Character', 'Integer', 'Float', 'Long', 'Double', 'Boolean']
 KEYWORD_DEFINED_WORDS = ['constant', 'const', 'array', 'linked', 'hashmap', 'hashset', 'treemap', 'list',  'void']
 ENCAPSULATION_DEFINED_WORDS = ['getter', 'get', 'setter', 'set']
+# Other
+KEYSYMS_TO_IGNORE = ['Shift_L', 'Shift_R', 'Control_L', 'Control_R', 'Alt_L', 'Alt_R', 'Left', 'Right', 'Up', 'Down']
+
+# BUILD TOOLS DEFINITION AND DEPENDENCIES
+# Build tool file names
+MAVEN = 'Maven'
+GRADLE_GROOVY = 'Gradle-Groovy'
+GRADLE_KOTLIN = 'Gradle-Kotlin'
+BUILD_TOOL_FILE_MAPPING = {
+    MAVEN: 'pom.xml',
+    GRADLE_GROOVY: 'build.gradle',
+    GRADLE_KOTLIN: 'build.gradle.kts',
+}
+# Build tool dependencies
+DEPENDENCIES_TO_CHECK = {
+    GRADLE_GROOVY: {
+        'Spring Web': "implementation 'org.springframework.boot:spring-boot-starter-web'",
+        'Spring Data JPA': "implementation 'org.springframework.boot:spring-boot-starter-data-jpa'",
+        'Swagger UI': "implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'",
+    },
+    GRADLE_KOTLIN: {
+        'Spring Web': 'implementation("org.springframework.boot:spring-boot-starter-web")',
+        'Spring Data JPA': 'implementation("org.springframework.boot:spring-boot-starter-data-jpa")',
+        'Swagger UI': 'implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0")',
+    },
+    MAVEN: {
+        'Spring Web': '<dependency>\n\t\t\t<groupId>org.springframework.boot</groupId>\n\t\t\t<artifactId>spring-boot-starter-web</artifactId>\n\t\t</dependency>',
+        'Spring Data JPA': '<dependency>\n\t\t\t<groupId>org.springframework.boot</groupId>\n\t\t\t<artifactId>spring-boot-starter-data-jpa</artifactId>\n\t\t</dependency>',
+        'Swagger UI': '<dependency>\n\t\t\t<groupId>org.springdoc</groupId>\n\t\t\t<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>\n\t\t\t<version>2.6.0</version>\n\t\t</dependency>',
+    },
+}
+# Build tool regex
+GRADLE_REGEX = r"dependencies\s*{\s*([\s\S]*?)\s*}"
+MAVEN_REGEX = r"<dependencies>\s*([\s\S]*?)\s*</dependencies>"
+BUILD_TOOL_PATTER_REGEX = {
+    MAVEN: MAVEN_REGEX,
+    GRADLE_GROOVY: GRADLE_REGEX,
+    GRADLE_KOTLIN: GRADLE_REGEX,
+}
 
 # TEXTX GRAMMAR
 # Folders
@@ -105,7 +144,9 @@ LONG_W = 'Long'
 DOUBLE_W = 'Double'
 BOOLEAN_W = 'Boolean'
 # OtherDataTypes
+STR = 'str'
 STRING = 'string'
+STRING_C = 'String'
 # DateTypes
 DATE = 'date'
 TIME = 'time'
@@ -129,7 +170,7 @@ NO_ID_PROPERTY_ERROR  = 'There is no ID property in the "%s" class! An ID proper
 MULTIPLE_ID_PROPERTIES_ERROR = '"%s" class has more than one ID property (%s)! Only one ID property is allowed.'
 EMPTY_CONSTRUCTOR_ERROR = 'There is no empty constructor in the "%s" class! An empty constructor is required.'
 UNIQUE_CONSTRUCTORS_ERROR = 'The specific constructor "%s" already exists in the "%s" class! Each constructor must be unique within a class.'
-UNIQUE_METHODS_ERROR = 'The method "%s"%s already exists in the "%s" class! Each method within a class must be unique, defined by both name and properties.'
+UNIQUE_METHODS_ERROR = 'The method "%s"%s already exists in the "%s" class! Each method within a class must be unique, defined by both method name and property types.'
 PROPERTY_NAME_ERROR = 'Property name "%s" is not a valid Java variable name! %s'
 ID_PROPERTY_VALUE_ERROR = 'The "%s" property of type "%s" should not have a "const" or "constant" keyword specified and/or value defined! Constant values are not allowed for ID properties.'
 ID_PROPERTY_GETTER_ENCAPSULATION_ERROR = 'The "%s" property of type "%s" requires a getter method to be defined! Getter methods are mandatory for ID properties.'
@@ -148,6 +189,7 @@ LIST_ELEMENTS_ERROR = 'Invalid value "%s" in "%s" %s for property "%s" of type "
 CONSTRUCTOR_UNIQUE_PROPERTIES_ERROR = 'The specified constructor includes the property "%s", which is defined more than once! Constructors cannot include non-unique properties.'
 CONSTRUCTOR_CONSTANT_PROPERTY_ERROR = 'The specified constructor includes the property "%s", which is defined as a constant! Constructors cannot include properties that are constants.'
 METHOD_NAME_ERROR = 'Method name "%s" is not a valid Java method name! %s'
+METHOD_TYPE_IN_LIST_TYPE_ERROR = 'The method type "%s" is not valid for the list type "%s"! Only wrapper types such as "Byte", "Short", "Character", "Integer", "Float", "Long", "Double", "Boolean", or "String" can be used for list methods.'
 # Additional Java explanation messages
 JAVA_CLASS_NAME_ERROR = 'To create a valid Java class name, start with an uppercase letter, followed by letters, digit, dollar signs, or underscores. No spaces or special characters like @, !, # are allowed.'
 JAVA_PROPERTY_AND_METHOD_NAME_ERROR = 'To create a valid Java variable name, start with a letter, dollar sign, or underscore, followed by letters (uppercase or lowercase), digits, dollar signs, or underscores. No spaces or special characters like @, !, # are allowed.'
@@ -175,6 +217,7 @@ PROPERTY_VALUE_REGEX = r'=(.*?);'
 COMMENT_REGEX = r'//(.*)'
 
 # JINJA MAPPINGS
+VOWELS = ['a', 'e', 'i', 'o', 'u']
 # Java type mappings
 MAP_JAVA_TYPES = {
     DATE: 'LocalDate',
@@ -187,7 +230,8 @@ MAP_JAVA_TYPES = {
     TREEMAP: 'TreeMap'
 }
 # Import mappings
-PROPERTY_LIST_IMPORT_MAPPING = {
+UUID_IMPORT = 'java.util.UUID'
+LIST_IMPORT_MAPPING = {
     ARRAY: (MAP_JAVA_TYPES[ARRAY], ['java.util.ArrayList', 'java.util.List']),
     LINKED: (MAP_JAVA_TYPES[LINKED], ['java.util.LinkedList', 'java.util.List']),
     HASHMAP: (MAP_JAVA_TYPES[HASHMAP], ['java.util.HashMap', 'java.util.Map']),
@@ -204,6 +248,36 @@ PROPERTY_RELATIONSHIP_MAPPING = {
     '1-n': 'jakarta.persistence.OneToMany',
     'n-1': 'jakarta.persistence.ManyToOne',
     'n-n': 'jakarta.persistence.ManyToMany',
+}
+LIST_TYPE_MAPPING = {
+    LIST: '{}[]',
+    ARRAY: 'List<{}>',
+    LINKED: 'List<{}>',
+    HASHMAP: 'Map<String, {}>',
+    HASHSET: 'Set<{}>',
+    TREEMAP: 'Map<String, {}>',
+}
+METHOD_LIST_TYPE_MAPPING = {
+    LIST: 'List<{}>',
+    ARRAY: 'ArrayList<{}>',
+    LINKED: 'LinkedList<{}>',
+    HASHMAP: 'HashMap<String, {}>',
+    HASHSET: 'HashSet<{}>',
+    TREEMAP: 'TreeMap<String, {}>',
+}
+METHOD_LIST_DEFAULT_VALUE_MAPPING = {
+    LIST: 'new ArrayList<{}>()',
+    ARRAY: 'new ArrayList<{}>()',
+    LINKED: 'new LinkedList<{}>()',
+    HASHMAP: 'new HashMap<String, {}>()',
+    HASHSET: 'new HashSet<{}>()',
+    TREEMAP: 'new TreeMap<String, {}>()',
+}
+RELATIONSHIP_TYPE_MAPPING = {
+    '1-1': '@OneToOne',
+    '1-n': '@OneToMany',
+    'n-1': '@ManyToOne',
+    'n-n': '@ManyToMany',
 }
 
 # CUSTOM ERROR MESSAGES PER PROPERTY TYPE
@@ -244,11 +318,3 @@ ERROR_MESSAGES = {
     TREEMAP: f'{TREEMAP.capitalize()} type must start with "[" and end with "]"',
     LIST: f'{LIST.capitalize()} type must start with "[" and end with "]"',
 }
-
-# OTHER
-BUILD_TOOL_FILE_MAPPING = {
-    'Gradle-Groovy': 'build.gradle',
-    'Gradle-Kotlin': 'build.gradle.kts',
-    'Maven': 'pom.xml'
-}
-KEYSYMS_TO_IGNORE = ['Shift_L', 'Shift_R', 'Control_L', 'Control_R', 'Alt_L', 'Alt_R', 'Left', 'Right', 'Up', 'Down']

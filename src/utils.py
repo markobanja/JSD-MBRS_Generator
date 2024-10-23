@@ -169,6 +169,35 @@ def detect_build_tool(folder_path):
     logging.debug('No build tool detected in folder')
     return None
 
+def check_dependencies(build_tool, dependencies_to_check, build_content):
+    """
+    Checks if the specified dependencies are present in the build configuration.
+    """
+    logging.debug(f'Checking dependencies in "{build_tool}" build configuration')
+    dependencies_section = get_dependencies_section(build_tool, build_content)
+    if dependencies_section:
+        # Iterate over the dependencies to check and check if they are in the dependencies block
+        missing_dependencies = {key: value for key, value in dict(dependencies_to_check).items() if value not in dependencies_section}
+        logging.debug(f'Missing dependencies: "{missing_dependencies}"')
+        return missing_dependencies
+    logging.warning(f'Could not find the dependencies section in the "{build_tool}" configuration file')
+    return cfg.ERROR
+
+
+def get_dependencies_section(build_tool, build_content):
+    """
+    Extracts the dependencies section from the build configuration content.
+    """
+    logging.debug(f'Finding dependencies section in "{build_tool}" build configuration')
+    pattern = cfg.BUILD_TOOL_PATTER_REGEX[build_tool]
+    match = re.search(pattern, build_content)
+    if match:
+        logging.debug('Dependencies section found')
+        dependencies_section = match.group(1)
+        return dependencies_section
+    logging.warning(f'Could not find the dependencies section in the "{build_tool}" configuration file')
+    return None
+
 def get_import_package_tree(project_path, pattern):
     """
     Extracts the import package tree from the given project path.
@@ -214,8 +243,13 @@ def create_syntax_error_message(error):
     try:
         logging.debug(f'Parsing syntax error message: "{error.message}"')
         pattern = cfg.SYNTAX_ERROR_MESSAGE_REGEX
-        expected_value, found_value = re.match(pattern, error.message, re.DOTALL).group(1, 2)
+        match = re.match(pattern, error.message, re.DOTALL)
+        expected_value, found_value = match.group(1, 2) if match else (error.message, None)
         expected_value = expected_value.strip().replace('\'', '"')
+        if not found_value:
+            logging.debug(f'Failed to parse syntax error message: "{error.message}". Returning original error message')
+            message = f'at position ({error.line},{error.col}): Syntax error! {expected_value} but not found.'
+            return message, None, None
         found_value = extract_between_quotes(found_value.strip())
         near_part, found_part = found_value.split('*', 1)
         near_part = near_part.strip()
@@ -342,7 +376,9 @@ def check_property_value(property_type, property_value):
         cfg.BOOLEAN_W: lambda value: cfg.OK if isinstance(value, str) and value.lower() in ('true', 'false') else error(cfg.ERROR_MESSAGES[cfg.BOOLEAN_W]),
         
         # OtherDataTypes
+        cfg.STR: lambda value: cfg.OK if isinstance(value, str) and value.startswith('"') and value.endswith('"') else error(cfg.ERROR_MESSAGES[cfg.STRING]),
         cfg.STRING: lambda value: cfg.OK if isinstance(value, str) and value.startswith('"') and value.endswith('"') else error(cfg.ERROR_MESSAGES[cfg.STRING]),
+        cfg.STRING_C: lambda value: cfg.OK if isinstance(value, str) and value.startswith('"') and value.endswith('"') else error(cfg.ERROR_MESSAGES[cfg.STRING]),
 
         # DateTypes
         cfg.DATE: lambda value: cfg.OK if isinstance(value, str) and check_datetime(value, cfg.DATE_REGEX) else error(cfg.ERROR_MESSAGES[cfg.DATE]),

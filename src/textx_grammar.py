@@ -107,7 +107,7 @@ class TextXGrammar:
             # Determine if the error is due to an unknown object
             if e.err_type == 'Unknown object':
                 e.search_value = utils.get_unknown_object_name(e)
-                unknown_object_error_msg = f'{error_msg}! Ensure that "{e.search_value}" is defined in the grammar before using it.'
+                unknown_object_error_msg = f'{error_msg}! Please ensure that "{e.search_value}" is a valid grammar object at the specified location or correct any typos.'
                 return Response(status=cfg.ERROR, error=e, error_msg=unknown_object_error_msg, error_class=error_class)
 
             return Response(status=cfg.ERROR, error=e, error_msg=error_msg, error_class=error_class)
@@ -160,8 +160,8 @@ class TextXGrammar:
             'Database': lambda database: self.database_processor(self, database),
             'Entity': lambda entity: self.entity_processor(self, entity),
             'Property': lambda property: self.property_processor(self, property),
-            'Constructors': lambda constructor: self.constructor_processor(self, constructor),
-            'Methods': lambda method: self.method_processor(self, method),
+            'Constructor': lambda constructor: self.constructor_processor(self, constructor),
+            'Method': lambda method: self.method_processor(self, method),
         })
 
         logging.info('Metamodel generated')
@@ -302,6 +302,9 @@ class TextXGrammar:
         """
         Perform semantic checks on each class in the model.
         """
+        logging.info(f'Updating variables for entity "{entity.name}"')
+        self.add_variables_to_entity(entity)
+        logging.info(f'Successfully updated variables for entity "{entity.name}"')
         logging.info(f'Starting semantic checks for class "{entity.name}"')
         self.check_class_name(entity)
         self.check_unique_property_names(entity)
@@ -312,7 +315,8 @@ class TextXGrammar:
         logging.info(f'Successfully finished semantic checks for class "{entity.name}"')
         logging.info(f'Updating variables for class "{entity.name}"')
         self.package_tree(self, entity)
-        self.get_necessary_imports(entity)
+        self.get_necessary_property_imports(entity)
+        self.get_necessary_method_imports(entity)
         logging.info(f'Successfully updated variables for class "{entity.name}"')
 
     def property_processor(self, property):
@@ -354,6 +358,7 @@ class TextXGrammar:
         """
         logging.info(f'Starting semantic checks for method "{method.name}"')
         self.check_method_name(self, method)
+        self.check_method_type_in_list_type(method)
         logging.info(f'Successfully finished semantic checks for method "{method.name}"')
 
     # MODEL SEMANTIC CHECKS
@@ -400,6 +405,13 @@ class TextXGrammar:
             error_message = cfg.DATABASE_PASSWORD_ERROR % (str(database.driver).capitalize(), database.credentials.password, cfg.SQL_DATABASE_PASSWORD_ERROR)
             logging.error(error_message)
             raise SemanticError(error_message, **get_location(database), search_value=database.credentials.password, err_type='database_password_error')
+        
+    # ENTITY FUNCTIONS
+    def add_variables_to_entity(entity):
+        """
+        Add necessary variables to the entity.
+        """
+        entity.imports = set()
 
     # CLASS SEMANTIC CHECKS
     def check_class_name(entity):
@@ -477,18 +489,24 @@ class TextXGrammar:
 
     def check_unique_methods(self, entity):
         """
-        Check if the methods are unique within a class.
+        Check if the methods are unique within a class by checking method name and property types.
         Raise a SemanticError if a method is not unique.
         """
         methods = set()
         for method in entity.methods:
-            method_properties = ', '.join(property.name for property in method.property_list)
-            method_name = f'{method.name}({method_properties})' if method_properties else method.name
+            method_types_obj = [
+                (property.property_type.type if not property.property_type.__class__.__name__ == 'Entity' else property.property_type.name)
+                for property in method.property_list
+            ]
+            # Sort properties alphabetically by name for consistent comparison
+            method_types_obj.sort(key=lambda x: x[0])
+            method_types = ', '.join(type for type in method_types_obj)
+            method_name = f'{method.name}({method_types})' if method_types else method.name
             if method_name in methods:
-                additional_text = f' with properties "({method_properties})"' if method_properties else ''
+                additional_text = f' with property types "({method_types})"' if method_types else ''
                 error_message = cfg.UNIQUE_METHODS_ERROR % (method.name, additional_text, entity.name)
                 logging.error(error_message)
-                raise SemanticError(error_message, **get_location(method), search_value=method_name, err_type='unique_methods_error')
+                raise SemanticError(error_message, **get_location(method), search_value=method.name, err_type='unique_methods_error')
             methods.add(method_name)
 
     # CLASS UPDATE FUNCTIONS
@@ -505,18 +523,16 @@ class TextXGrammar:
         logging.debug(f'Package tree for JSD-MBRS model: "{package_tree}"')
         model.package_tree = package_tree
 
-    def get_necessary_imports(entity):
+    def get_necessary_property_imports(entity):
         """
-        Create and add necessary imports to the entity.
+        Add necessary property imports to the entity's imports.
         """
         logging.debug(f'Finding imports for entity "{entity.name}"')
-        entity.imports = set()
-        model = entity.parent
         for property in entity.properties:
             property_type_obj = property.property_type
             property_type_class = property_type_obj.__class__.__name__
-            # Check if property type is an Entity
             if property_type_class == 'Entity':
+                model = entity.parent
                 import_path = f'{model.package_tree}.{property_type_obj.name}.{property_type_obj.name}'
                 entity.imports.add(import_path)
                 logging.debug(f'Adding import path "{import_path}" for entity "{entity.name}"')
@@ -526,11 +542,10 @@ class TextXGrammar:
                     mapped_date_type_import = cfg.PROPERTY_DATE_IMPORT_MAPPING[property_type]
                     entity.imports.add(mapped_date_type_import)
                     logging.debug(f'Adding import path "{mapped_date_type_import}" for entity "{entity.name}"')
-            # Check if property has a list type and map it to an import
             if property.list_type:
                 list_type = property.list_type.type
-                if list_type in cfg.PROPERTY_LIST_IMPORT_MAPPING:
-                    _, mapped_list_type_import = cfg.PROPERTY_LIST_IMPORT_MAPPING[list_type]
+                if list_type in cfg.LIST_IMPORT_MAPPING:
+                    _, mapped_list_type_import = cfg.LIST_IMPORT_MAPPING[list_type]
                     for item in mapped_list_type_import:
                         entity.imports.add(item)
                     logging.debug(f'Adding import path "{mapped_list_type_import}" for entity "{entity.name}"')
@@ -540,6 +555,30 @@ class TextXGrammar:
                     mapped_relationship_import = cfg.PROPERTY_RELATIONSHIP_MAPPING[relationship]
                     entity.imports.add(mapped_relationship_import)
                     logging.debug(f'Adding import path "{mapped_relationship_import}" for entity "{entity.name}"')
+
+    def get_necessary_method_imports(entity):
+        """
+        Add necessary method imports to the entity's imports.
+        """
+        logging.debug(f'Finding imports for entity "{entity.name}"')
+        for method in entity.methods:
+            method_declaration = method.method_declaration
+            method_type = method_declaration.method_type
+            if isinstance(method_type, gc.IDType):
+                entity.imports.add(cfg.UUID_IMPORT)
+            if type(method_type).__name__ == 'Entity':
+                model = entity.parent
+                import_path = f'{model.package_tree}.{method_type.name}.{method_type.name}'
+                entity.imports.add(import_path)
+                logging.debug(f'Adding import path "{import_path}" for entity "{entity.name}"')
+            if type(method_declaration).__name__ == 'ListMethodType':
+                method_list_type = method_declaration.list_type.type
+                if method_list_type in cfg.LIST_IMPORT_MAPPING:
+                    _, mapped_method_list_type_import = cfg.LIST_IMPORT_MAPPING[method_list_type]
+                    # Use the first item in the tuple
+                    entity.imports.add(mapped_method_list_type_import[0])
+                    logging.debug(f'Adding import path "{mapped_method_list_type_import}" for entity "{entity.name}"')
+            
 
     # PROPERTY FUNCTIONS
     def add_variables_to_property(property):
@@ -635,7 +674,7 @@ class TextXGrammar:
         
     def check_property_type_and_list_type(property):
         """
-        Check if the property type and list type are valid.
+        Check if the property type and list type are .
         Raise a SemanticError if the conditions are not met.
         """
         property_type_class = property.property_type.__class__.__name__
@@ -722,7 +761,7 @@ class TextXGrammar:
         """
         def format_statement(index, value, key_value_pair=False):
             method = 'add' if not key_value_pair else 'put'
-            if property_type == cfg.STRING:
+            if property_type in [cfg.STR, cfg.STRING, cfg.STRING_C]:
                 return f'{method}("{index}", "{value}")' if key_value_pair else f'{method}("{value}")'
             elif property_type in [cfg.CHAR, cfg.CHARACTER_W]:
                 return f"{method}(\"{index}\", '{value}')" if key_value_pair else f"{method}('{value}')"
@@ -759,12 +798,12 @@ class TextXGrammar:
                 logging.debug(f'Handling list type property "{property.name}" with list type "{list_type}" and property value "{property_value}"')
                 property.property_value.value = property_value.replace('[', '{').replace(']', '}')
             elif list_type in [cfg.ARRAY, cfg.LINKED, cfg.HASHSET,]:
-                mapped_list_type, _ = cfg.PROPERTY_LIST_IMPORT_MAPPING[list_type]
+                mapped_list_type, _ = cfg.LIST_IMPORT_MAPPING[list_type]
                 updated_value = update_property_list_value(mapped_list_type, property_type, property_value)
                 logging.debug(f'Updating property value for property "{property.name}" with mapped list type "{mapped_list_type}" and updated value "{updated_value}"')
                 property.property_value.value = updated_value
             elif list_type in [cfg.HASHMAP, cfg.TREEMAP]:
-                mapped_list_type, _ = cfg.PROPERTY_LIST_IMPORT_MAPPING[list_type]
+                mapped_list_type, _ = cfg.LIST_IMPORT_MAPPING[list_type]
                 updated_value = update_property_list_value(mapped_list_type, property_type, property_value, key_value_pair=True)
                 logging.debug(f'Updating property value for property "{property.name}" with mapped list type "{mapped_list_type}" and updated value "{updated_value}"')
                 property.property_value.value = updated_value
@@ -837,3 +876,17 @@ class TextXGrammar:
             error_message = cfg.METHOD_NAME_ERROR % (method.name, cfg.JAVA_PROPERTY_AND_METHOD_NAME_ERROR)
             logging.error(error_message)
             raise SemanticError(error_message, **get_location(method), search_value=method_name, err_type='method_name_error')
+
+    def check_method_type_in_list_type(method):
+        """
+        Check if the method type inside the list type is valid.
+        Raise a SemanticError if it is not valid.
+        """
+        method_declaration = method.method_declaration
+        is_valid_type = isinstance(method_declaration.method_type, gc.WrapperDataType) or isinstance(method_declaration.method_type, gc.OtherDataType)
+        is_entity = type(method_declaration.method_type).__name__ == 'Entity'
+        if hasattr(method_declaration, 'list_type') and not (is_valid_type or is_entity):
+            search_value = [method_declaration.method_type.type, method_declaration.list_type.type]
+            error_message = cfg.METHOD_TYPE_IN_LIST_TYPE_ERROR % (method_declaration.method_type.type, method_declaration.list_type.type)
+            logging.error(error_message)
+            raise SemanticError(error_message, **get_location(method), search_value=search_value, err_type='method_type_in_list_type_error')

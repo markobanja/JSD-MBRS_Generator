@@ -99,11 +99,11 @@ def get_type_builtins():
     """
     logging.info('Creating type builtins')
     return {
-        cfg.ID: IDType(cfg.ID),
-        cfg.IDENTIFIER: IDType(cfg.IDENTIFIER),
-        cfg.UNIQUE_ID: IDType(cfg.UNIQUE_ID),
-        cfg.KEY: IDType(cfg.KEY),
-        cfg.PRIMARY_KEY: IDType(cfg.PRIMARY_KEY),
+        cfg.ID: IDType(cfg.ID, 'UUID.randomUUID()'),
+        cfg.IDENTIFIER: IDType(cfg.IDENTIFIER, 'UUID.randomUUID()'),
+        cfg.UNIQUE_ID: IDType(cfg.UNIQUE_ID, 'UUID.randomUUID()'),
+        cfg.KEY: IDType(cfg.KEY, 'UUID.randomUUID()'),
+        cfg.PRIMARY_KEY: IDType(cfg.PRIMARY_KEY, 'UUID.randomUUID()'),
 
         cfg.BYTE: PrimitiveDataType(cfg.BYTE, '0'),
         cfg.SHORT: PrimitiveDataType(cfg.SHORT, '0'),
@@ -123,7 +123,9 @@ def get_type_builtins():
         cfg.DOUBLE_W: WrapperDataType(cfg.DOUBLE_W, '0.0D'),
         cfg.BOOLEAN_W: WrapperDataType(cfg.BOOLEAN_W, 'false'),
 
+        cfg.STR: OtherDataType(cfg.STR, '""'),
         cfg.STRING: OtherDataType(cfg.STRING, '""'),
+        cfg.STRING_C: OtherDataType(cfg.STRING_C, '""'),
 
         cfg.DATE: DateType(cfg.DATE, 'LocalDate.of(1970, 01, 01)'),
         cfg.TIME: DateType(cfg.TIME, 'LocalTime.of(00, 00, 00, 00)'),
