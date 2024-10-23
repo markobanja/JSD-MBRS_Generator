@@ -307,7 +307,7 @@ class MainWindowGUI:
                     response_color = ERROR_COLOR
                     self.set_error_color(response)
                     response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(response.error_msg)}'
-                    logging.error(f'Error during syntax checks: {response.error_msg}')
+                    logging.error(f'Error during generate: {response.error_msg}')
                 self.console_output.config(text=response_text, fg=response_color)
             except Exception as e:
                 error_message = f'Failed to generate metamodel and model: {str(e)}'
@@ -339,7 +339,7 @@ class MainWindowGUI:
                 self.window.update_idletasks()
 
                 # Export the metamodel and model to the project folder
-                response = tg.export(self.project_path)
+                response = tg.export()
                 if response.status is cfg.OK:
                     response_color = OK_COLOR
                     response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["OK"]} Successfully exported files to the "{export_folder}" folder.'
@@ -665,16 +665,17 @@ class MainWindowGUI:
             response.error_msg = error_message.replace(str(current_line_number), str(previous_line_number))
             response.error.line = previous_line_number
             logging.debug(f'Highlighting previous line: "{previous_line_number}"')
-        elif is_near_part_in_line(current_line_number):
-            start_index = f'{current_line_number}.0'
-            end_index = f'{current_line_number}.end'
-            logging.debug(f'Highlighting current line: "{current_line_number}"')
         elif is_near_part_in_line(penultimate_line_number):
             start_index = f'{penultimate_line_number}.0'
             end_index = f'{penultimate_line_number}.end'
             response.error_msg = error_message.replace(str(current_line_number), str(penultimate_line_number))
             response.error.line = penultimate_line_number
             logging.debug(f'Highlighting current line: "{penultimate_line_number}"')
+        else:
+            start_index = f'{current_line_number}.0'
+            end_index = f'{current_line_number}.end'
+            logging.debug(f'Highlighting current line: "{current_line_number}"')
+
         self.remove_tags_text_editor(start_index, end_index)
         self.text_editor.tag_configure(ERROR_COLOR, foreground=ERROR_COLOR)
         self.text_editor.tag_add(ERROR_COLOR, start_index, end_index)

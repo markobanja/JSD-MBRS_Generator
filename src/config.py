@@ -48,7 +48,7 @@ SAVE_WINDOW_HEIGHT = 150
 RULE_DEFINED_WORDS = ['Database', 'class', 'Constructors', 'Methods', 'toString']
 GRAMMAR_DEFINED_WORDS = ['driver', 'database name', 'username', 'password', 'public', 'abstract', 'final', 'empty', 'default', 'static', 'id', 'identifier', 'uniqueId', 'key', 'primaryKey', 'yes', 'no', '1-1', '1-n', 'n-1', 'n-n']
 TYPE_DEFINED_WORDS = ['byte', 'short', 'char', 'int', 'float', 'long', 'double', 'boolean', 'string', 'date', 'time', 'datetime']
-WRAPPER_TYPE_DEFINED_WORDS = ['Integer', 'Float', 'Double', 'Boolean']
+WRAPPER_TYPE_DEFINED_WORDS = ['Byte', 'Short', 'Character', 'Integer', 'Float', 'Long', 'Double', 'Boolean']
 KEYWORD_DEFINED_WORDS = ['constant', 'const', 'array', 'linked', 'hashmap', 'hashset', 'treemap', 'list',  'void']
 ENCAPSULATION_DEFINED_WORDS = ['getter', 'get', 'setter', 'set']
 
@@ -79,6 +79,45 @@ JSD_MBRS_GENERATOR_EXTENSION = '.jsdmbrs'
 METAMODEL_NAME = 'metamodel'
 MODEL_NAME = f'model{DOT_FILE_EXTENSION}'
 
+# TEXTX PROPERTY TYPES
+# IDTypes
+ID = 'id'
+IDENTIFIER = 'identifier'
+UNIQUE_ID = 'uniqueId'
+KEY = 'key'
+PRIMARY_KEY = 'primaryKey'
+# PrimitiveDataTypes
+BYTE = 'byte'
+SHORT = 'short'
+CHAR = 'char'
+INT = 'int'
+FLOAT = 'float'
+LONG = 'long'
+DOUBLE = 'double'
+BOOLEAN = 'boolean'
+# WrapperDataTypes
+BYTE_W = 'Byte'
+SHORT_W = 'Short'
+CHARACTER_W = 'Character'
+INTEGER_W = 'Integer'
+FLOAT_W = 'Float'
+LONG_W = 'Long'
+DOUBLE_W = 'Double'
+BOOLEAN_W = 'Boolean'
+# OtherDataTypes
+STRING = 'string'
+# DateTypes
+DATE = 'date'
+TIME = 'time'
+DATETIME = 'datetime'
+# ListTypes
+ARRAY = 'array'
+LINKED = 'linked'
+HASHMAP = 'hashmap'
+HASHSET = 'hashset'
+TREEMAP = 'treemap'
+LIST = 'list'
+
 # CUSTOM ERROR MESSAGES
 UNIQUE_CLASS_NAMES_ERROR = 'Class name "%s" already exists! Each class name must be unique.'
 DATABASE_NAME_ERROR = '%s database name "%s" is not a valid SQL database name! %s'
@@ -101,6 +140,7 @@ ENTITY_PROPERTY_RELATIONSHIP_ERROR = 'The "%s" property of the "%s" class type m
 ENTITY_PROPERTY_LIST_RELATIONSHIP_ERROR = 'The "%s" list property of the "%s" class type does not support the "%s" relationship! "%s" properties support "1-n" (one-to-many), "n-1" (many-to-one), and "n-n" (many-to-many) relationships.'
 ENTITY_PROPERTY_NON_LIST_RELATIONSHIP_ERROR = 'The "%s" property of the "%s" class type does not support the "%s" relationship! "%s" properties support only "1-1" (one-to-one) relationship.'
 PROPERTY_RELATIONSHIP_ERROR = 'The "%s" property cannot have a relationship since it is not of a appropriate type! Only lists and classes support relationships.'
+PROPERTY_TYPE_AND_LIST_TYPE_ERROR = 'The "%s" property cannot have both a "%s" property type and "%s" list type simultaneously. Only reference types (objects) such as "Byte", "Short", "Character", "Integer", "Float", "Long", "Double", "Boolean", or "String" can be used.'
 CONSTANT_AND_VALUE_ERROR = 'If "const" or "constant" keyword is specified, constant value is mandatory, and vice versa! In this case, %s is missing for "%s".'
 CONSTANT_AND_ENCAPSULATION_ERROR = 'Constant property "%s" cannot have setter method! Constant properties can only have getter methods.'
 CONSTANT_PROPERTY_VALUE_ERROR = 'Invalid value "%s" for property "%s" of type "%s" (%s)!'
@@ -134,41 +174,39 @@ CLASS_NAME_REGEX = r'class\s+(\w+)\s*\{'
 PROPERTY_VALUE_REGEX = r'=(.*?);'
 COMMENT_REGEX = r'//(.*)'
 
-# PROPERTY TYPES
-# IDTypes
-ID = 'id'
-IDENTIFIER = 'identifier'
-UNIQUE_ID = 'uniqueId'
-KEY = 'key'
-PRIMARY_KEY = 'primaryKey'
-# PrimitiveDataTypes
-BYTE = 'byte'
-SHORT = 'short'
-CHAR = 'char'
-INT = 'int'
-FLOAT = 'float'
-LONG = 'long'
-DOUBLE = 'double'
-BOOLEAN = 'boolean'
-# WrapperDataTypes
-INTEGER_W = 'Integer'
-FLOAT_W = 'Float'
-DOUBLE_W = 'Double'
-BOOLEAN_W = 'Boolean'
-# OtherDataTypes
-STRING = 'string'
-# DateTypes
-DATE = 'date'
-TIME = 'time'
-DATETIME = 'datetime'
-# ListTypes
-ARRAY = 'array'
-LINKED = 'linked'
-HASHMAP = 'hashmap'
-HASHSET = 'hashset'
-TREEMAP = 'treemap'
-LIST = 'list'
-# Custom error messages per property type
+# JINJA MAPPINGS
+# Java type mappings
+MAP_JAVA_TYPES = {
+    DATE: 'LocalDate',
+    TIME: 'LocalTime',
+    DATETIME: 'LocalDateTime',
+    ARRAY: 'ArrayList',
+    LINKED: 'LinkedList',
+    HASHMAP: 'HashMap',
+    HASHSET: 'HashSet',
+    TREEMAP: 'TreeMap'
+}
+# Import mappings
+PROPERTY_LIST_IMPORT_MAPPING = {
+    ARRAY: (MAP_JAVA_TYPES[ARRAY], ['java.util.ArrayList', 'java.util.List']),
+    LINKED: (MAP_JAVA_TYPES[LINKED], ['java.util.LinkedList', 'java.util.List']),
+    HASHMAP: (MAP_JAVA_TYPES[HASHMAP], ['java.util.HashMap', 'java.util.Map']),
+    HASHSET: (MAP_JAVA_TYPES[HASHSET], ['java.util.HashSet', 'java.util.Set']),
+    TREEMAP: (MAP_JAVA_TYPES[TREEMAP], ['java.util.TreeMap', 'java.util.Map']),
+}
+PROPERTY_DATE_IMPORT_MAPPING = {
+    DATE: 'java.time.LocalDate',
+    TIME: 'java.time.LocalTime',
+    DATETIME: 'java.time.LocalDateTime',
+}
+PROPERTY_RELATIONSHIP_MAPPING = {
+    '1-1': 'jakarta.persistence.OneToOne',
+    '1-n': 'jakarta.persistence.OneToMany',
+    'n-1': 'jakarta.persistence.ManyToOne',
+    'n-n': 'jakarta.persistence.ManyToMany',
+}
+
+# CUSTOM ERROR MESSAGES PER PROPERTY TYPE
 ERROR_MESSAGES = {
     # PrimitiveDataTypes
     BYTE: f'{BYTE.capitalize()} value must be a number between -128 and 127',
@@ -181,10 +219,14 @@ ERROR_MESSAGES = {
     BOOLEAN: f'{BOOLEAN.capitalize()} value must be "true" or "false"',
     
     # WrapperDataTypes
-    INTEGER_W: f'{INTEGER_W.capitalize()} value must be a number between -2147483648 and 2147483647',
-    FLOAT_W: f'{FLOAT_W.capitalize()} value must be a float or an integer number that ends with "F"',
-    DOUBLE_W: f'{DOUBLE_W.capitalize()} value must be a float or an integer number that ends with "D"',
-    BOOLEAN_W: f'{BOOLEAN_W.capitalize()} value must be "true" or "false"',
+    BYTE_W: f'{BYTE_W} value must be a number between -128 and 127',
+    SHORT_W: f'{SHORT_W} value must be a number between -32768 and 32767',
+    CHARACTER_W: f'{CHARACTER_W} value must be a single character string surrounded by single quotes - \'\'',
+    INTEGER_W: f'{INTEGER_W} value must be a number between -2147483648 and 2147483647',
+    FLOAT_W: f'{FLOAT_W} value must be a float or an integer number that ends with "F"',
+    LONG_W: f'{LONG_W} value must be a number between -9223372036854775808 and 9223372036854775807 that ends with "L"',
+    DOUBLE_W: f'{DOUBLE_W} value must be a float or an integer number that ends with "D"',
+    BOOLEAN_W: f'{BOOLEAN_W} value must be "true" or "false"',
     
     # OtherDataTypes
     STRING: f'{STRING.capitalize()} value must be surrounded by double quotes - ""',
