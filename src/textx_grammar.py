@@ -111,6 +111,10 @@ class TextXGrammar:
                 return Response(status=cfg.ERROR, error=e, error_msg=unknown_object_error_msg, error_class=error_class)
 
             return Response(status=cfg.ERROR, error=e, error_msg=error_msg, error_class=error_class)
+        except subprocess.CalledProcessError as e:
+            error_msg = f'{str(e.stderr)}'
+            logging.error(error_msg)
+            return Response(status=cfg.ERROR, error=e, error_msg=error_msg, error_class='CalledProcessError')
         except Exception as e:
             error_msg = f'{str(e)}'
             logging.error(error_msg)
@@ -303,7 +307,7 @@ class TextXGrammar:
         Perform semantic checks on each class in the model.
         """
         logging.info(f'Updating variables for entity "{entity.name}"')
-        self.add_variables_to_entity(entity)
+        # self.add_variables_to_entity(entity)
         logging.info(f'Successfully updated variables for entity "{entity.name}"')
         logging.info(f'Starting semantic checks for class "{entity.name}"')
         self.check_class_name(entity)
@@ -315,8 +319,6 @@ class TextXGrammar:
         logging.info(f'Successfully finished semantic checks for class "{entity.name}"')
         logging.info(f'Updating variables for class "{entity.name}"')
         self.package_tree(self, entity)
-        self.get_necessary_property_imports(entity)
-        self.get_necessary_method_imports(entity)
         logging.info(f'Successfully updated variables for class "{entity.name}"')
 
     def property_processor(self, property):
@@ -405,13 +407,7 @@ class TextXGrammar:
             error_message = cfg.DATABASE_PASSWORD_ERROR % (str(database.driver).capitalize(), database.credentials.password, cfg.SQL_DATABASE_PASSWORD_ERROR)
             logging.error(error_message)
             raise SemanticError(error_message, **get_location(database), search_value=database.credentials.password, err_type='database_password_error')
-        
-    # ENTITY FUNCTIONS
-    def add_variables_to_entity(entity):
-        """
-        Add necessary variables to the entity.
-        """
-        entity.imports = set()
+
 
     # CLASS SEMANTIC CHECKS
     def check_class_name(entity):
@@ -522,63 +518,7 @@ class TextXGrammar:
         package_tree = utils.get_import_package_tree(java_app_folder_path, cfg.PROJECT_JAVA_FOLDER)
         logging.debug(f'Package tree for JSD-MBRS model: "{package_tree}"')
         model.package_tree = package_tree
-
-    def get_necessary_property_imports(entity):
-        """
-        Add necessary property imports to the entity's imports.
-        """
-        logging.debug(f'Finding imports for entity "{entity.name}"')
-        for property in entity.properties:
-            property_type_obj = property.property_type
-            property_type_class = property_type_obj.__class__.__name__
-            if property_type_class == 'Entity':
-                model = entity.parent
-                import_path = f'{model.package_tree}.{property_type_obj.name}.{property_type_obj.name}'
-                entity.imports.add(import_path)
-                logging.debug(f'Adding import path "{import_path}" for entity "{entity.name}"')
-            if property_type_class == 'DateType':
-                property_type = property_type_obj.type
-                if property_type in cfg.PROPERTY_DATE_IMPORT_MAPPING:
-                    mapped_date_type_import = cfg.PROPERTY_DATE_IMPORT_MAPPING[property_type]
-                    entity.imports.add(mapped_date_type_import)
-                    logging.debug(f'Adding import path "{mapped_date_type_import}" for entity "{entity.name}"')
-            if property.list_type:
-                list_type = property.list_type.type
-                if list_type in cfg.LIST_IMPORT_MAPPING:
-                    _, mapped_list_type_import = cfg.LIST_IMPORT_MAPPING[list_type]
-                    for item in mapped_list_type_import:
-                        entity.imports.add(item)
-                    logging.debug(f'Adding import path "{mapped_list_type_import}" for entity "{entity.name}"')
-            if property.relationship and property_type_class == 'Entity':
-                relationship = property.relationship
-                if relationship in cfg.PROPERTY_RELATIONSHIP_MAPPING:
-                    mapped_relationship_import = cfg.PROPERTY_RELATIONSHIP_MAPPING[relationship]
-                    entity.imports.add(mapped_relationship_import)
-                    logging.debug(f'Adding import path "{mapped_relationship_import}" for entity "{entity.name}"')
-
-    def get_necessary_method_imports(entity):
-        """
-        Add necessary method imports to the entity's imports.
-        """
-        logging.debug(f'Finding imports for entity "{entity.name}"')
-        for method in entity.methods:
-            method_declaration = method.method_declaration
-            method_type = method_declaration.method_type
-            if isinstance(method_type, gc.IDType):
-                entity.imports.add(cfg.UUID_IMPORT)
-            if type(method_type).__name__ == 'Entity':
-                model = entity.parent
-                import_path = f'{model.package_tree}.{method_type.name}.{method_type.name}'
-                entity.imports.add(import_path)
-                logging.debug(f'Adding import path "{import_path}" for entity "{entity.name}"')
-            if type(method_declaration).__name__ == 'ListMethodType':
-                method_list_type = method_declaration.list_type.type
-                if method_list_type in cfg.LIST_IMPORT_MAPPING:
-                    _, mapped_method_list_type_import = cfg.LIST_IMPORT_MAPPING[method_list_type]
-                    # Use the first item in the tuple
-                    entity.imports.add(mapped_method_list_type_import[0])
-                    logging.debug(f'Adding import path "{mapped_method_list_type_import}" for entity "{entity.name}"')
-            
+   
 
     # PROPERTY FUNCTIONS
     def add_variables_to_property(property):
@@ -798,12 +738,12 @@ class TextXGrammar:
                 logging.debug(f'Handling list type property "{property.name}" with list type "{list_type}" and property value "{property_value}"')
                 property.property_value.value = property_value.replace('[', '{').replace(']', '}')
             elif list_type in [cfg.ARRAY, cfg.LINKED, cfg.HASHSET,]:
-                mapped_list_type, _ = cfg.LIST_IMPORT_MAPPING[list_type]
+                mapped_list_type = cfg.MAP_JAVA_TYPES[list_type]
                 updated_value = update_property_list_value(mapped_list_type, property_type, property_value)
                 logging.debug(f'Updating property value for property "{property.name}" with mapped list type "{mapped_list_type}" and updated value "{updated_value}"')
                 property.property_value.value = updated_value
             elif list_type in [cfg.HASHMAP, cfg.TREEMAP]:
-                mapped_list_type, _ = cfg.LIST_IMPORT_MAPPING[list_type]
+                mapped_list_type = cfg.MAP_JAVA_TYPES[list_type]
                 updated_value = update_property_list_value(mapped_list_type, property_type, property_value, key_value_pair=True)
                 logging.debug(f'Updating property value for property "{property.name}" with mapped list type "{mapped_list_type}" and updated value "{updated_value}"')
                 property.property_value.value = updated_value
