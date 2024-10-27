@@ -34,9 +34,10 @@ class Jinja:
         self.project_path = project_path
 
     @classmethod
-    def execute_templates(self, model, project_path):
+    def generate(self, model, project_path):
         """
-        Execute the Jinja templates for the given model and save the generated files at the given location.
+        Generate the grammar elements from the given model and project path.
+        Save the generated Java files in the specified folder.
         """
         logging.info('Starting to execute Jinja templates')
         utils.folder_exists(cfg.TEMPLATE_FOLDER)
@@ -46,7 +47,7 @@ class Jinja:
         self.set_jinja_env(self, jinja_env)
         self.set_project_path(self, project_path)
         for entity in model.entities:
-            self.execute_template(self, model, entity)
+            self.execute_templates(self, model, entity)
         logging.info('Jinja templates executed successfully')
 
     def create_jinja_environment(template_folder):
@@ -64,7 +65,7 @@ class Jinja:
         JinjaFilters(jinja_env)
         logging.debug('Jinja filters registered successfully')
 
-    def execute_template(self, model, entity):
+    def execute_templates(self, model, entity):
         """
         Execute Jinja templates for the given entity and save the generated Java files.
         """
@@ -73,8 +74,15 @@ class Jinja:
         java_app_file_path = utils.find_java_app_file(java_folder)
         java_app_folder_path = java_app_file_path.parent
         utils.create_folder(java_app_folder_path, entity.name)
-        self.render_template(self, model, entity, java_app_folder_path, cfg.JAVA_CLASS_TEMPLATE_FILE, cfg.JAVA_FILE_NAME)
+        self.execute_template(self, model, entity, java_app_folder_path)
         logging.info(f'Jinja templates executed successfully for entity "{entity.name}"')
+
+    def execute_template(self, model, entity, folder_path):
+        """
+        Execute the Jinja template for the given entity and save the generated Java file in the specified folder.
+        """
+        self.render_template(self, model, entity, folder_path, cfg.JAVA_CLASS_TEMPLATE_FILE, cfg.JAVA_CLASS_FILE_NAME)
+        self.render_template(self, model, entity, folder_path, cfg.JAVA_CONTROLLER_TEMPLATE_FILE, cfg.JAVA_CONTROLLER_FILE_NAME)
 
     def render_template(self, model, entity, folder_path, template_name, file_name):
         """
@@ -90,21 +98,32 @@ class Jinja:
         self.format_java_file(folder_path, file_path)
 
     def format_java_file(folder_path, file_path):
-        utils.folder_exists(cfg.RESOURCES_FOLDER)
+        """
+        Format the Java file using Google Java Format.
+        """
+        try:
+            logging.debug(f'Formatting file "{file_path}" using Google Java Format')
+            utils.folder_exists(cfg.RESOURCES_FOLDER)
 
-        # Find the Google Java Format jar file in the resources folder
-        google_format_file_name = utils.find_specific_file_regex(cfg.RESOURCES_FOLDER, cfg.GOOGLE_FORMAT_REGEX)
-        if not google_format_file_name:
-            logging.warning(f'No Google Java Format jar file found in the "{cfg.RESOURCES_FOLDER}" folder')
-            return
-        elif len(google_format_file_name) > 1:
-            logging.warning(f'More than one Google Java Format jar file found in the "{cfg.RESOURCES_FOLDER}" folder. Using the newest one: {google_format_file_name[0]}')
+            # Find the Google Java Format jar file in the resources folder
+            google_format_file_name = utils.find_specific_file_regex(cfg.RESOURCES_FOLDER, cfg.GOOGLE_FORMAT_REGEX)
+            if not google_format_file_name:
+                logging.warning(f'No Google Java Format jar file found in the "{cfg.RESOURCES_FOLDER}" folder')
+                return
+            elif len(google_format_file_name) > 1:
+                logging.warning(f'More than one Google Java Format jar file found in the "{cfg.RESOURCES_FOLDER}" folder. Using the newest one: {google_format_file_name[0]}')
 
-        current_directory = utils.get_current_path()
-        google_format_jar_path = utils.get_path(current_directory, cfg.RESOURCES_FOLDER, google_format_file_name[0])
-        command = f'java -jar {google_format_jar_path} --replace {file_path}'
-        subprocess.run(command, shell=True, check=True, cwd=folder_path, capture_output=True, text=True)
-
+            current_directory = utils.get_current_path()
+            google_format_jar_path = utils.get_path(current_directory, cfg.RESOURCES_FOLDER, google_format_file_name[0])
+            command = f'java -jar {google_format_jar_path} --length 250 --offset 0 --skip-reflowing-long-strings --skip-javadoc-formatting --aosp --replace {file_path}'
+            subprocess.run(command, shell=True, check=True, cwd=folder_path, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            error_message = str(e.stderr).replace('\n', '. ').rstrip('. ')
+            logging.error(f'Failed to format file "{file_path}" using Google Java Format: {error_message}')
+            raise
+        except Exception as e:
+            raise
+        
 
 class JinjaFilters:
     """
@@ -116,36 +135,52 @@ class JinjaFilters:
         """
         self.jinja_env = jinja_env
         filters = {
-            'lowercase': self.lowercase,
-            'uppercase_first': self.uppercase_first,
+            'constructor_properties': self.constructor_properties,
             'description': self.description,
-            'method_type': self.method_type,
-            'method_default_value': self.method_default_value,
+            'get_default_value': self.get_default_value,
             'java_type': self.java_type,
+            'lowercase': self.lowercase,
             'map_list_type': self.map_list_type,
             'map_relationship_type': self.map_relationship_type,
-            'get_default_value': self.get_default_value,
-            'constructor_properties': self.constructor_properties
+            'method_default_value': self.method_default_value,
+            'method_type': self.method_type,
+            'plural_capitalize': self.plural_capitalize,
+            'plural_lowercase': self.plural_lowercase,
+            'uppercase_first': self.uppercase_first,
         }
         self.jinja_env.filters.update(filters)
 
     def lowercase(self, word):
         """
-        Converts the given word to lowercase.
+        Convert the given word to lowercase.
         """
         logging.debug(f'Converting "{word}" to lowercase')
         return str(word).lower()
     
+    def plural_lowercase(self, word):
+        """
+        Pluralize the given word and convert it to lowercase.
+        """
+        logging.debug(f'Pluralize "{word}" and convert it to lowercase')
+        return utils.pluralize_word(word, lowercase=True)
+    
+    def plural_capitalize(self, word):
+        """
+        Pluralize the given word and capitalize it.
+        """
+        logging.debug(f'Pluralize "{word}" and capitalize it')
+        return utils.pluralize_word(word)
+    
     def uppercase_first(self, word):
         """
-        Capitalizes the first letter of the given word leaving the rest.
+        Capitalize the first letter of the given word leaving the rest.
         """
         logging.debug(f'Capitalizing first letter of "{word}" leaving the rest')
         return str(word[0]).upper() + word[1:]
     
     def description(self, word):
         """
-        Returns the description of the given word.
+        Return the description of the given word.
         """
         prefix = 'An' if word[0] in cfg.VOWELS else 'A'
         description = f'{prefix} {word} entity'
@@ -251,7 +286,7 @@ class JinjaFilters:
 
     def map_list_type(self, list_type):
         """
-        Maps a list type to the corresponding Java type.
+        Map a list type to the corresponding Java type.
         """
         mapped_list_type = cfg.LIST_TYPE_MAPPING.get(list_type.type, '{}')
         logging.debug(f'Mapping list type "{list_type.type}" to "{mapped_list_type}"')
@@ -259,7 +294,7 @@ class JinjaFilters:
     
     def map_method_list_type(self, list_type):
         """
-        Maps a method list type to the corresponding Java type.
+        Map a method list type to the corresponding Java type.
         """
         mapped_list_type = cfg.METHOD_LIST_TYPE_MAPPING.get(list_type.type, '{}')
         logging.debug(f'Mapping list type "{list_type.type}" to "{mapped_list_type}"')
@@ -267,7 +302,7 @@ class JinjaFilters:
     
     def map_method_list_default_value(self, list_type):
         """
-        Maps a method list default value to the corresponding Java value.
+        Map a method list default value to the corresponding Java value.
         """
         mapped_list_type = cfg.METHOD_LIST_DEFAULT_VALUE_MAPPING.get(list_type.type, '{}')
         logging.debug(f'Mapping list type "{list_type.type}" to "{mapped_list_type}"')
@@ -275,7 +310,7 @@ class JinjaFilters:
 
     def map_relationship_type(self, relationship_type):
         """
-        Maps a relationship type to the corresponding Java type.
+        Map a relationship type to the corresponding Java type.
         """
         mapped_relationship_type = cfg.RELATIONSHIP_TYPE_MAPPING.get(relationship_type)
         logging.debug(f'Mapping relationship type "{relationship_type}" to "{mapped_relationship_type}"')
@@ -283,7 +318,7 @@ class JinjaFilters:
     
     def get_default_value(self, property):
         """
-        Returns the default value for a given property.
+        Return the default value for a given property.
         """
         logging.debug(f'Getting default value for property "{property.name}"')
         property_type = property.property_type
@@ -307,7 +342,7 @@ class JinjaFilters:
 
     def constructor_properties(self, property_list):
         """
-        Returns a list of properties that are eligible for inclusion in a constructor.
+        Return a list of properties that are eligible for inclusion in a constructor.
         """
         constructor_properties = []
         for property in property_list:

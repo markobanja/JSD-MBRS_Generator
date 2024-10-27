@@ -236,6 +236,25 @@ def add_punctuation(text, punctuation='!'):
     logging.debug(f'Added punctuation: "{punctuation}" to text: "{text}"')
     return text
 
+def pluralize_word(word, lowercase=False):
+    """
+    Pluralize a singular English word based on common rules.
+    Rules:
+    - If the word ends with 's', 'x', 'z', or a consonant followed by 'h', add 'es'.
+    - If the word ends with 'y' preceded by a vowel, replace 'y' with 'ies'.
+    - For other cases, add 's' to the word.
+    """
+    plural = None
+    if re.search('[sxz]$', word) or re.search('[^aeioudgkprt]h$', word):
+        plural = re.sub('$', 'es', word)
+    elif re.search('[aeiou]y$', word):
+        plural = re.sub('y$', 'ies', word)
+    else:
+        plural = word + 's'
+    plural = plural.lower() if lowercase else plural.capitalize()
+    logging.debug(f"Pluralized '{word}' to '{plural}'")
+    return plural
+
 def create_syntax_error_message(error):
     """
     Creates a message for a syntax error.
