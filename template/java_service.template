@@ -1,0 +1,191 @@
+{{ 'package ' + model.package_tree + '.' + entity.name + ';' }}
+
+{# Imports #}
+{{ '// IMPORTS' }}
+{{ 'import java.util.List;' }}
+{{ 'import org.slf4j.Logger;' }}
+{{ 'import org.springframework.beans.BeanUtils;' }}
+{{ 'import org.springframework.stereotype.Service;' }}
+{{ 'import org.springframework.dao.DataAccessException;' }}
+{{ 'import jakarta.persistence.EntityNotFoundException;' }}
+{# // Imports #}
+
+{# Class #}
+{{ '@Service' }}
+{{ 'public class ' + entity.name + 'Service {' }}
+
+    {# Logger #}
+    {{ 'private static final Logger logger = ' + entity.name + '.logger;' }}
+    {# // Logger #}
+    {# Service injection #}
+    {{ 'private final ' + entity.name + 'Repository ' + entity.name | lowercase + 'Repository;' }}
+    {# // Service injection #}
+
+    {# Constructor #}
+    {{ 'public ' + entity.name + 'Service(' + entity.name + 'Repository ' + entity.name | lowercase + 'Repository) {' }}
+        {{ 'this.' + entity.name | lowercase + 'Repository = ' + entity.name | lowercase + 'Repository;' }}
+	{{ '}' }}
+    {# // Constructor #}
+
+    {# GET #}
+    {{ '/**' }}
+    {{ ' * Retrieves all ' + entity.name + ' entities from the repository.' }}
+    {{ ' *' }}
+    {{ ' * @return a List of ' + entity.name + ' objects representing all ' + entity.name | plural_lowercase + ' in the repository' }}
+    {{ ' * @throws DataAccessException if a data access error occurs while retrieving the ' + entity.name | plural_lowercase }}
+    {{ ' * @throws RuntimeException if any unexpected error occurs' }}
+    {{ ' */' }}
+    {{ 'public List<' + entity.name + '> getAll' + entity.name | plural_capitalize + '() {' }}
+        {{ 'try {' }}
+            {{ '// Retrieve all ' + entity.name | plural_lowercase + ' from the repository' }}
+            {{ 'return ' + entity.name | lowercase + 'Repository.findAll();' }}
+        {{ '} catch (DataAccessException e) {' }}
+            {{ 'logger.error("Data access error occurred while retrieving all ' + entity.name | plural_lowercase + ': " + e.getMessage(), e);' }}
+            {{ 'throw e;' }}
+        {{ '} catch (Exception e) {' }}
+            {{ 'logger.error("Unexpected error occurred while retrieving all ' + entity.name | plural_lowercase + ': " + e.getMessage(), e);' }}
+            {{ 'throw new RuntimeException("Unexpected error occurred while retrieving all ' + entity.name | plural_lowercase + ': " + e.getMessage(), e);' }}
+        {{ '}' }}
+    {{ '}' }}
+
+    {{ '/**' }}
+    {{ ' * Retrieves a ' + entity.name + ' entity by its ID from the repository.' }}
+    {{ ' *' }}
+    {{ ' * @param ' + entity.id_property + ' the ID of the ' + entity.name | lowercase + ' to retrieve' }}
+    {{ ' * @return the ' + entity.name + ' object with the specified ID' }}
+    {{ ' * @throws IllegalArgumentException if the ID is null or <= 0' }}
+    {{ ' * @throws EntityNotFoundException if no ' + entity.name | lowercase + ' with the given ID exists' }}
+    {{ ' * @throws DataAccessException if a data access error occurs while retrieving the ' + entity.name | lowercase }}
+    {{ ' * @throws RuntimeException if any unexpected error occurs' }}
+    {{ ' */' }}
+    {{ 'public ' + entity.name + ' get' + entity.name + 'ById(Long ' + entity.id_property + ') {' }}
+        {{ 'try {' }}
+            {{ '// Validate ' + entity.id_property }}
+            {{ 'if (' + entity.id_property + ' == null || ' + entity.id_property + ' <= 0) {' }}
+                {{ 'throw new IllegalArgumentException("Invalid ' + entity.id_property + '");' }}
+            {{ '}' }}
+            {{ '// Retrieve and return the ' + entity.name | lowercase + ' if found, otherwise throw EntityNotFoundException' }}
+            {{ 'return ' + entity.name | lowercase + 'Repository.findById(' + entity.id_property + ').orElseThrow(() -> new EntityNotFoundException("Could not find a ' + entity.name | lowercase + ' with ID: " + ' + entity.id_property + '));' }}
+        {{ '} catch (IllegalArgumentException e) {' }}
+            {{ 'logger.error("Invalid ' + entity.id_property + ': " + e.getMessage(), e);' }}
+            {{ 'throw e;' }}
+        {{ '} catch (EntityNotFoundException e) {' }}
+            {{ 'logger.error("EntityNotFoundException occurred while retrieving ' + entity.name | lowercase + ' with ID " + ' + entity.id_property + ' + ": " + e.getMessage(), e);' }}
+            {{ 'throw e;' }}
+        {{ '} catch (DataAccessException e) {' }}
+            {{ 'logger.error("Data access error occurred while retrieving ' + entity.name | lowercase + ' with ID " + ' + entity.id_property + ' + ": " + e.getMessage(), e);' }}
+            {{ 'throw e;' }}
+        {{ '} catch (Exception e) {' }}
+            {{ 'logger.error("Unexpected error occurred while retrieving ' + entity.name | lowercase + ' with ID " + ' + entity.id_property + ' + ": " + e.getMessage(), e);' }}
+            {{ 'throw new RuntimeException("Unexpected error occurred while retrieving ' + entity.name | lowercase + ' with ID " + ' + entity.id_property + ' + ": " + e.getMessage(), e);' }}
+        {{ '}' }}
+    {{ '}' }}
+    {# // GET #}
+
+    {# POST #}
+    {{ '/**' }}
+    {{ '* Creates a new ' + entity.name + ' entity in the repository.' }}
+    {{ '*' }}
+    {{ '* @param ' + entity.name | lowercase + ' the ' + entity.name + ' object to create' }}
+    {{ '* @return the created ' + entity.name + ' object' }}
+    {{ '* @throws IllegalArgumentException if the provided ' + entity.name | lowercase + ' object is null' }}
+    {{ '* @throws DataAccessException if a data access error occurs during ' + entity.name | lowercase + ' creation' }}
+    {{ '* @throws RuntimeException if any unexpected error occurs' }}
+    {{ '*/' }}
+    {{ 'public ' + entity.name + ' create' + entity.name + '(' + entity.name + ' ' + entity.name | lowercase + ') {' }}
+        {{ 'try {' }}
+            {{ '// Validate ' + entity.name | lowercase }}
+            {{ 'if (' + entity.name | lowercase + ' == null) {' }}
+                {{ 'throw new IllegalArgumentException("Invalid ' + entity.name | lowercase + ' data");' }}
+            {{ '}' }}
+            {{ '// Save and return the created ' + entity.name | lowercase }}
+            {{ 'return ' + entity.name | lowercase + 'Repository.save(' + entity.name | lowercase + ');' }}
+        {{ '} catch (IllegalArgumentException e) {' }}
+            {{ 'logger.error("Invalid ' + entity.name | lowercase + ' data: " + e.getMessage(), e);' }}
+            {{ 'throw e;' }}
+        {{ '} catch (DataAccessException e) {' }}
+            {{ 'logger.error("Data access error occurred while creating a new ' + entity.name | lowercase + ': " + e.getMessage(), e);' }}
+            {{ 'throw e;' }}
+        {{ '} catch (Exception e) {' }}
+            {{ 'logger.error("Unexpected error occurred while creating a new ' + entity.name | lowercase + ': " + e.getMessage(), e);' }}
+            {{ 'throw new RuntimeException("Unexpected error occurred while creating a new ' + entity.name | lowercase + ': " + e.getMessage(), e);' }}
+        {{ '}' }}
+    {{ '}' }}
+    {# // POST #}
+
+    {# PUT #}
+    {{ '/**' }}
+    {{ ' * Updates an existing ' + entity.name + ' entity in the repository.' }}
+    {{ ' *' }}
+    {{ ' * @param ' + entity.id_property + ' the ID of the ' + entity.name | lowercase + ' to update' }}
+    {{ ' * @param updated' + entity.name + ' the updated ' + entity.name + ' object with new data' }}
+    {{ ' * @return the updated ' + entity.name + ' object' }}
+    {{ ' * @throws IllegalArgumentException if the ID is null or <= 0, or if updated' + entity.name + ' is null' }}
+    {{ ' * @throws EntityNotFoundException if no ' + entity.name | lowercase + ' with the given ID exists' }}
+    {{ ' * @throws DataAccessException if a data access error occurs during ' + entity.name | lowercase + ' update' }}
+    {{ ' * @throws RuntimeException if any unexpected error occurs' }}
+    {{ ' */' }}
+    {{ 'public ' + entity.name + ' update' + entity.name + '(Long ' + entity.id_property + ', ' + entity.name + ' updated' + entity.name + ') {' }}
+        {{ 'try {' }}
+            {{ '// Validate ' + entity.id_property }}
+            {{ 'if (' + entity.id_property + ' == null || ' + entity.id_property + ' <= 0) {' }}
+                {{ 'throw new IllegalArgumentException("Invalid ' + entity.id_property + '");' }}
+            {{ '}' }}
+            {{ '// Validate updated' + entity.name }}
+            {{ 'if (updated' + entity.name + ' == null) {' }}
+                {{ 'throw new IllegalArgumentException("Invalid updated ' + entity.name | lowercase + ' data.");' }}
+            {{ '}' }}
+            {{ '// Find existing ' + entity.name | lowercase + ' by ID or throw EntityNotFoundException' }}
+            {{ entity.name + ' existing' + entity.name + ' = ' + entity.name | lowercase + 'Repository.findById(' + entity.id_property + ').orElseThrow(() -> new EntityNotFoundException("Could not find a ' + entity.name | lowercase + ' with ID: " + ' + entity.id_property + '));' }}
+            {{ '// Copy all properties from updated' + entity.name + ' to existing' + entity.name + ', excluding ' + entity.id_property }}
+            {{ 'BeanUtils.copyProperties(updated' + entity.name + ', existing' + entity.name + ', "' + entity.id_property + '");' }}
+            {{ '// Save and return the updated ' + entity.name | lowercase }}
+            {{ 'return ' + entity.name | lowercase + 'Repository.save(existing' + entity.name + ');' }}
+        {{ '} catch (IllegalArgumentException e) {' }}
+            {{ 'logger.error("Invalid input data: " + e.getMessage(), e);' }}
+            {{ 'throw e;' }}
+        {{ '} catch (EntityNotFoundException e) {' }}
+            {{ 'logger.error("EntityNotFoundException occurred while updating ' + entity.name | lowercase + ' with ID " + ' + entity.id_property + ' + ": " + e.getMessage(), e);' }}
+            {{ 'throw e;' }}
+        {{ '} catch (DataAccessException e) {' }}
+            {{ 'logger.error("Data access error occurred while updating ' + entity.name | lowercase + ' with ID " + ' + entity.id_property + ' + ": " + e.getMessage(), e);' }}
+            {{ 'throw e;' }}
+        {{ '} catch (Exception e) {' }}
+            {{ 'logger.error("Unexpected error occurred while updating ' + entity.name | lowercase + ' with ID " + ' + entity.id_property + ' + ": " + e.getMessage(), e);' }}
+            {{ 'throw new RuntimeException("Unexpected error occurred while updating ' + entity.name | lowercase + ' with ID " + ' + entity.id_property + ' + ": " + e.getMessage(), e);' }}
+        {{ '}' }}
+    {{ '}' }}
+    {# // PUT #}
+
+    {# DELETE #}
+    {{ '/**' }}
+    {{ ' * Deletes a ' + entity.name + ' entity from the repository.' }}
+    {{ ' *' }}
+    {{ ' * @param ' + entity.id_property + ' the ID of the ' + entity.name | lowercase + ' to delete' }}
+    {{ ' * @return true if the ' + entity.name | lowercase + ' was successfully deleted, false otherwise' }}
+    {{ ' * @throws DataAccessException if a data access error occurs during ' + entity.name | lowercase + ' deletion' }}
+    {{ ' * @throws RuntimeException if any unexpected error occurs' }}
+    {{ ' */' }}
+    {{ 'public boolean delete' + entity.name + '(Long ' + entity.id_property + ') {' }}
+        {{ 'try {' }}
+            {{ '// Check if ' + entity.name | lowercase + ' exists' }}
+            {{ 'boolean ' + entity.name | lowercase + 'Exists = ' + entity.name | lowercase + 'Repository.existsById(' + entity.id_property + ');' }}
+            {{ 'if (!' + entity.name | lowercase + 'Exists) {' }}
+                {{ 'logger.warn("' + entity.name + ' with ID {} not found for deletion", ' + entity.id_property + ');' }}
+                {{ 'return false;' }}
+            {{ '}' }}
+            {{ '// Delete the ' + entity.name | lowercase }}
+            {{ entity.name | lowercase + 'Repository.deleteById(' + entity.id_property + ');' }}
+            {{ 'return true;' }}
+        {{ '} catch (DataAccessException e) {' }}
+            {{ 'logger.error("Data access error occurred while deleting ' + entity.name | lowercase + ' with ID " + ' + entity.id_property + ' + ": " + e.getMessage(), e);' }}
+            {{ 'throw e;' }}
+        {{ '} catch (Exception e) {' }}
+            {{ 'logger.error("Unexpected error occurred while deleting ' + entity.name | lowercase + ' with ID " + ' + entity.id_property + ' + ": " + e.getMessage(), e);' }}
+            {{ 'throw new RuntimeException("Unexpected error occurred while deleting ' + entity.name | lowercase + ' with ID " + ' + entity.id_property + ' + ": " + e.getMessage(), e);' }}
+        {{ '}' }}
+    {{ '}' }}
+    {# // DELETE #}
+
+{{ '}' }}
+{# // Class #}

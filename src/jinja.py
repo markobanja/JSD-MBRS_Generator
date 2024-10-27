@@ -83,6 +83,7 @@ class Jinja:
         """
         self.render_template(self, model, entity, folder_path, cfg.JAVA_CLASS_TEMPLATE_FILE, cfg.JAVA_CLASS_FILE_NAME)
         self.render_template(self, model, entity, folder_path, cfg.JAVA_CONTROLLER_TEMPLATE_FILE, cfg.JAVA_CONTROLLER_FILE_NAME)
+        self.render_template(self, model, entity, folder_path, cfg.JAVA_SERVICE_TEMPLATE_FILE, cfg.JAVA_SERVICE_FILE_NAME)
 
     def render_template(self, model, entity, folder_path, template_name, file_name):
         """
