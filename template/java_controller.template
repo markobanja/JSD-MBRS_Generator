@@ -168,7 +168,7 @@
             {{ 'if (' + entity.id_property + ' == null || ' + entity.id_property + ' <= 0) {' }}
                 {{ 'return ResponseEntity.badRequest().body("Invalid ' + entity.id_property + '");' }}
             {{ '}' }}
-            {{ 'boolean deleted' + entity.name + ' = ' + entity.name | lowercase + 'Service.delete' + entity.name + 'ById(' + entity.id_property + ');' }}
+            {{ 'boolean deleted' + entity.name + ' = ' + entity.name | lowercase + 'Service.delete' + entity.name + '(' + entity.id_property + ');' }}
             {{ 'return deleted' + entity.name + ' ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();' }}
         {{ '} catch (Exception e) {' }}
             {{ 'logger.error("An error occurred while processing the request");' }}
