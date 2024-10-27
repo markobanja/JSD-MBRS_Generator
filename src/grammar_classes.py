@@ -6,15 +6,15 @@ class PropertyType:
     """
     Class representing a property type.
     """
-    def __init__(self, name, property_type, default_value, primary_key=False):
+    def __init__(self, name, property_type, default_value, is_primary_key=False):
         """
         Constructor for the PropertyType class.
         """
         self.name = name
         self.type = property_type
         self.default_value = default_value
-        self.primary_key = primary_key
-        logging.debug(f'Creating PropertyType object with name: "{self.name}", type: "{self.type}", default_value: "{self.default_value}", primary_key: "{self.primary_key}"')
+        self.is_primary_key = is_primary_key
+        logging.debug(f'Creating PropertyType object with name: "{self.name}", type: "{self.type}", default_value: "{self.default_value}", is_primary_key: "{self.is_primary_key}"')
 
     def __str__(self):
         """
@@ -41,8 +41,8 @@ class IDType(PropertyType):
     """
     Class representing an ID type.
     """
-    def __init__(self, property_type, default_value=None, primary_key=True):
-        super().__init__(self.__class__.__name__, property_type, default_value, primary_key)
+    def __init__(self, property_type, default_value=None, is_primary_key=True):
+        super().__init__(self.__class__.__name__, property_type, default_value, is_primary_key)
 
 
 class DataType(PropertyType):

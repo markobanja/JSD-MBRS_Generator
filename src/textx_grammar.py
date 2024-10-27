@@ -95,7 +95,7 @@ class TextXGrammar:
             self.set_metamodel(self, metamodel)
             self.set_model(self, model)
             logging.info('Metamodel and model generated successfully')
-            jinja.execute_templates(model, self.project_path)
+            jinja.generate(model, self.project_path)
             return Response(status=cfg.OK)
         except TextXSyntaxError as e:
             error_msg, near_part, found_part = utils.create_syntax_error_message(e)
@@ -307,7 +307,6 @@ class TextXGrammar:
         Perform semantic checks on each class in the model.
         """
         logging.info(f'Updating variables for entity "{entity.name}"')
-        # self.add_variables_to_entity(entity)
         logging.info(f'Successfully updated variables for entity "{entity.name}"')
         logging.info(f'Starting semantic checks for class "{entity.name}"')
         self.check_class_name(entity)
@@ -319,6 +318,7 @@ class TextXGrammar:
         logging.info(f'Successfully finished semantic checks for class "{entity.name}"')
         logging.info(f'Updating variables for class "{entity.name}"')
         self.package_tree(self, entity)
+        self.set_entity_id_property_value(entity)
         logging.info(f'Successfully updated variables for class "{entity.name}"')
 
     def property_processor(self, property):
@@ -441,7 +441,7 @@ class TextXGrammar:
         id_type_count = 0
         id_property_list = []
         for property in entity.properties:
-            if property.property_type.primary_key:
+            if property.property_type.is_primary_key:
                 id_type_count += 1
                 id_property_list.append(property.name)
 
@@ -518,7 +518,15 @@ class TextXGrammar:
         package_tree = utils.get_import_package_tree(java_app_folder_path, cfg.PROJECT_JAVA_FOLDER)
         logging.debug(f'Package tree for JSD-MBRS model: "{package_tree}"')
         model.package_tree = package_tree
-   
+
+    def set_entity_id_property_value(entity):
+        """
+        Set the primary key property value for the entity.
+        """
+        for property in entity.properties:
+            if property.property_type.is_primary_key:
+                entity.id_property = property.name
+                break
 
     # PROPERTY FUNCTIONS
     def add_variables_to_property(property):
@@ -527,7 +535,7 @@ class TextXGrammar:
         """
         property_type_class = property.property_type.__class__.__name__
         if property_type_class == 'Entity':
-            property.property_type.primary_key = False
+            property.property_type.is_primary_key = False
     
     # PROPERTY SEMANTIC CHECKS
     def check_property_name(property):
@@ -545,7 +553,7 @@ class TextXGrammar:
         Check if the primary key property is declared as constant.
         Raise a SemanticError if the property value is defined or if the constant keyword is specified.
         """
-        if property.property_type.primary_key and (property.property_value or property.constant):
+        if property.property_type.is_primary_key and (property.property_value or property.constant):
             search_values = [property.name, 'const', 'constant']
             search_values.extend(property.property_value.value) if property.property_value else None
             error_message = cfg.ID_PROPERTY_VALUE_ERROR % (property.name, property.property_type.type)
@@ -557,7 +565,7 @@ class TextXGrammar:
         Check getter and setter methods for the primary key property.
         Raise a SemanticError if the conditions are not met.
         """
-        if property.property_type.primary_key:
+        if property.property_type.is_primary_key:
             if not property.encapsulation or not property.encapsulation.getter:
                 error_message = cfg.ID_PROPERTY_GETTER_ENCAPSULATION_ERROR % (property.name, property.property_type.type)
                 logging.error(error_message)

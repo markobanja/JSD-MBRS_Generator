@@ -1,0 +1,181 @@
+{{ 'package ' + model.package_tree + '.' + entity.name + ';' }}
+
+{# Imports #}
+{{ 'import java.net.URI;' }}
+{{ 'import java.util.List;' }}
+{{ 'import org.slf4j.Logger;' }}
+{{ 'import io.swagger.v3.oas.annotations.tags.Tag;' }}
+{{ 'import io.swagger.v3.oas.annotations.Operation;' }}
+{{ 'import org.springframework.http.HttpStatus;' }}
+{{ 'import org.springframework.http.ResponseEntity;' }}
+{{ 'import org.springframework.web.bind.annotation.DeleteMapping;' }}
+{{ 'import org.springframework.web.bind.annotation.GetMapping;' }}
+{{ 'import org.springframework.web.bind.annotation.PathVariable;' }}
+{{ 'import org.springframework.web.bind.annotation.PostMapping;' }}
+{{ 'import org.springframework.web.bind.annotation.PutMapping;' }}
+{{ 'import org.springframework.web.bind.annotation.RequestBody;' }}
+{{ 'import org.springframework.web.bind.annotation.RequestMapping;' }}
+{{ 'import org.springframework.web.bind.annotation.RestController;' }}
+{# // Imports #}
+
+{# Class #}
+{{ '@RestController' }}
+{{ '@RequestMapping("/api/v1/' + entity.name | plural_lowercase + '")' }}
+{{ '@Tag(name = "' + entity.name + ' Controller", description = "APIs for managing ' + entity.name | plural_lowercase + '")' }}
+{{ 'public class ' + entity.name + 'Controller {' }}
+
+    {# Logger #}
+    {{ 'private static final Logger logger = ' + entity.name + '.logger;' }}
+    {# // Logger #}
+    {# Service injection #}
+    {{ 'private final ' + entity.name + 'Service ' + entity.name | lowercase + 'Service;' }}
+    {# // Service injection #}
+
+    {# Constructor #}
+    {{ 'public ' + entity.name + 'Controller(' + entity.name + 'Service ' + entity.name | lowercase + 'Service) {' }}
+        {{ 'this.' + entity.name | lowercase + 'Service = ' + entity.name | lowercase + 'Service;' }}
+    {{ '}' }}
+    {# // Constructor #}
+
+    {# GET #}
+    {{ '/**' }}
+    {{ ' * GET method to retrieve a list of all ' + entity.name | plural_lowercase + '.' }}
+    {{ ' * Handles HTTP GET requests to fetch a list of all ' + entity.name | plural_lowercase + ' from the database.' }}
+    {{ ' * ' }}
+    {{ ' * @return a ResponseEntity containing:' }}
+    {{ ' *         - the list of all ' + entity.name | plural_lowercase + ' if found,' }}
+    {{ ' *         - a no-content response if no ' + entity.name | plural_lowercase + ' are found,' }}
+    {{ ' *         - an error message in case of an exception.' }}
+    {{ ' */' }}
+    {{ '@GetMapping' }}
+    {{ '@Operation(summary = "Get all ' + entity.name | plural_lowercase + '", description = "Retrieve a list of all ' + entity.name | plural_lowercase + '.")' }}
+    {{ 'public ResponseEntity<?> getAll' + entity.name | plural_capitalize + '() {' }}
+        {{ 'try {' }}
+            {{ 'logger.info("Received request to retrieve all ' + entity.name | plural_lowercase + '");' }}
+            {{ 'List<' + entity.name + '> ' + entity.name | lowercase + 'List = ' + entity.name | lowercase + 'Service.getAll' + entity.name | plural_capitalize + '();' }}
+            {{ 'return !' + entity.name | lowercase + 'List.isEmpty() ? ResponseEntity.ok(' + entity.name | lowercase + 'List) : ResponseEntity.noContent().build();' }}
+        {{ '} catch (Exception e) {' }}
+            {{ 'logger.error("An error occurred while processing the request");' }}
+            {{ 'return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An internal server error occurred. Please try again later.");' }}
+        {{ '}' }}
+    {{ '}' }}
+
+    {{ '/**' }}
+    {{ ' * GET method to retrieve a specific ' + entity.name | lowercase + ' by ' + entity.id_property + '.' }}
+    {{ ' * Handles HTTP GET requests to fetch a specific ' + entity.name | lowercase + ' from the database.' }}
+    {{ ' * ' }}
+    {{ ' * @param ' + entity.id_property + ' the ID of the ' + entity.name | lowercase + ' to retrieve' }}
+    {{ ' * @return a ResponseEntity containing:' }}
+    {{ ' *         - the ' + entity.name | lowercase + ' if found,' }}
+    {{ ' *         - a bad request response if the ' + entity.id_property + ' is invalid,' }}
+    {{ ' *         - a not found response if the ' + entity.name | lowercase + ' is not found,' }}
+    {{ ' *         - an error message in case of an exception.' }}
+    {{ ' */' }}
+    {{ '@GetMapping("/{' + entity.id_property + '}")' }}
+    {{ '@Operation(summary = "Get ' + entity.name | lowercase + ' by ' + entity.id_property + '", description = "Retrieves a specific ' + entity.name | lowercase + ' based on the ' + entity.id_property + '")' }}
+    {{ 'public ResponseEntity<?> get' + entity.name + 'ById(@PathVariable Long ' + entity.id_property + ') {' }}
+        {{ 'try {' }}
+            {{ 'logger.info("Received request to retrieve ' + entity.name | lowercase + ' with ' + entity.id_property + ': {}", ' + entity.id_property + ');' }}
+            {{ 'if (' + entity.id_property + ' == null || ' + entity.id_property + ' <= 0) {' }}
+                {{ 'return ResponseEntity.badRequest().body("Invalid ' + entity.id_property + '");' }}
+            {{ '}' }}
+            {{ entity.name + ' ' + entity.name | lowercase + ' = ' + entity.name | lowercase + 'Service.get' + entity.name + 'ById(' + entity.id_property + ');' }}
+            {{ 'return ' + entity.name | lowercase + ' != null ? ResponseEntity.ok(' + entity.name | lowercase + ') : ResponseEntity.notFound().build();' }}
+        {{ '} catch (Exception e) {' }}
+            {{ 'logger.error("An error occurred while processing the request");' }}
+            {{ 'return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An internal server error occurred. Please try again later.");' }}
+        {{ '}' }}
+    {{ '}' }}
+    {# // GET #}
+
+    {# POST #}
+    {{ '/**' }}
+    {{ ' * POST method to create a new ' + entity.name | lowercase + '.' }}
+    {{ ' * Handles HTTP POST requests to create a new ' + entity.name | lowercase + ' with the provided data.' }}
+    {{ ' * ' }}
+    {{ ' * @param ' + entity.name | lowercase + ' the data of the ' + entity.name | lowercase + ' to create' }}
+    {{ ' * @return a ResponseEntity containing:' }}
+    {{ ' *         - the created ' + entity.name | lowercase + ' if successful,' }}
+    {{ ' *         - a bad request response if the ' + entity.name | lowercase + ' data is invalid,' }}
+    {{ ' *         - an error message in case of an exception.' }}
+    {{ ' */' }}
+    {{ '@PostMapping' }}
+    {{ '@Operation(summary = "Create a new ' + entity.name | lowercase + '", description = "Creates a new ' + entity.name | lowercase + ' with the provided data")' }}
+    {{ 'public ResponseEntity<?> create' + entity.name + '(@RequestBody ' + entity.name + ' ' + entity.name | lowercase + ') {' }}
+        {{ 'try {' }}
+            {{ 'logger.info("Received request to create a new ' + entity.name | lowercase + '");' }}
+            {{ 'if (' + entity.name | lowercase + ' == null) {' }}
+                {{ 'return ResponseEntity.badRequest().body("Invalid ' + entity.name | lowercase + ' data.");' }}
+            {{ '}' }}
+            {{ entity.name + ' created' + entity.name + ' = ' + entity.name | lowercase + 'Service.create' + entity.name + '(' + entity.name | lowercase + ');' }}
+            {{ 'return created' + entity.name + ' != null
+                    ? ResponseEntity.created(URI.create("/' + entity.name | plural_lowercase + '/" + created' + entity.name + '.get' + entity.id_property | uppercase_first + '())).body(created' + entity.name + ')
+                    : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Unable to create ' + entity.name | lowercase + '. Please provide valid input.");' }}
+        {{ '} catch (Exception e) {' }}
+            {{ 'logger.error("An error occurred while processing the request");' }}
+            {{ 'return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An internal server error occurred. Please try again later.");' }}
+        {{ '}' }}
+    {{ '}' }}
+    {# // POST #}
+
+    {# PUT #}
+    {{ '/**' }}
+    {{ ' * PUT method to update an existing ' + entity.name | lowercase + '.' }}
+    {{ ' * Handles HTTP PUT requests to update an existing ' + entity.name | lowercase + ' based on the ' + entity.id_property + '.' }}
+    {{ ' * ' }}
+    {{ ' * @param ' + entity.id_property + ' the ID of the ' + entity.name | lowercase + ' to update' }}
+    {{ ' * @param updated' + entity.name + ' the updated data of the ' + entity.name | lowercase }}
+    {{ ' * @return a ResponseEntity containing:' }}
+    {{ ' *         - the updated ' + entity.name | lowercase + ' if successful,' }}
+    {{ ' *         - a bad request response if the updated ' + entity.name | lowercase + ' data is invalid,' }}
+    {{ ' *         - a not found response if the ' + entity.name | lowercase + ' to update is not found,' }}
+    {{ ' *         - an error message in case of an exception.' }}
+    {{ ' */' }}
+    {{ '@PutMapping("/{' + entity.id_property + '}")' }}
+    {{ '@Operation(summary = "Update an existing ' + entity.name | lowercase + '", description = "Updates an existing ' + entity.name | lowercase + ' based on the ' + entity.id_property + '")' }}
+    {{ 'public ResponseEntity<?> update' + entity.name + '(@PathVariable Long ' + entity.id_property + ', @RequestBody ' + entity.name + ' updated' + entity.name + ') {' }}
+        {{ 'try {' }}
+            {{ 'logger.info("Received request to update ' + entity.name | lowercase + ' with ' + entity.id_property + ': {}", ' + entity.id_property + ');' }}
+            {{ 'if (updated' + entity.name + ' == null) {' }}
+                {{ 'return ResponseEntity.badRequest().body("Invalid updated ' + entity.name | lowercase + ' data.");' }}
+            {{ '}' }}
+            {{ entity.name + ' ' + entity.name | lowercase + ' = ' + entity.name | lowercase + 'Service.update' + entity.name + '(' + entity.id_property + ', updated' + entity.name + ');' }}
+            {{ 'return ' + entity.name | lowercase + ' != null ? ResponseEntity.ok(' + entity.name | lowercase + ') : ResponseEntity.notFound().build();' }}
+        {{ '} catch (Exception e) {' }}
+            {{ 'logger.error("An error occurred while processing the request");' }}
+            {{ 'return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An internal server error occurred. Please try again later.");' }}
+        {{ '}' }}
+    {{ '}' }}
+    {# // PUT #}
+
+    {# DELETE #}
+    {{ '/**' }}
+    {{ ' * DELETE method to delete a ' + entity.name | lowercase + ' by ' + entity.id_property + '.' }}
+    {{ ' * Handles HTTP DELETE requests to delete a ' + entity.name | lowercase + ' based on the ' + entity.id_property + '.' }}
+    {{ ' * ' }}
+    {{ ' * @param ' + entity.id_property + ' the ID of the ' + entity.name | lowercase + ' to delete' }}
+    {{ ' * @return a ResponseEntity containing:' }}
+    {{ ' *         - a no-content response if the ' + entity.name | lowercase + ' is successfully deleted,' }}
+    {{ ' *         - a bad request response if the ' + entity.id_property + ' is invalid,' }}
+    {{ ' *         - a not found response if the ' + entity.name | lowercase + ' to delete is not found,' }}
+    {{ ' *         - an error message in case of an exception.' }}
+    {{ ' */' }}
+    {{ '@DeleteMapping("/{' + entity.id_property + '}")' }}
+    {{ '@Operation(summary = "Delete ' + entity.name | lowercase + ' by ' + entity.id_property + '", description = "Deletes a ' + entity.name | lowercase + ' based on the ' + entity.id_property + '")' }}
+    {{ 'public ResponseEntity<?> delete' + entity.name + '(@PathVariable Long ' + entity.id_property + ') {' }}
+        {{ 'try {' }}
+            {{ 'logger.info("Received request to delete ' + entity.name | lowercase + ' with ' + entity.id_property + ': {}", ' + entity.id_property + ');' }}
+            {{ 'if (' + entity.id_property + ' == null || ' + entity.id_property + ' <= 0) {' }}
+                {{ 'return ResponseEntity.badRequest().body("Invalid ' + entity.id_property + '");' }}
+            {{ '}' }}
+            {{ 'boolean deleted' + entity.name + ' = ' + entity.name | lowercase + 'Service.delete' + entity.name + 'ById(' + entity.id_property + ');' }}
+            {{ 'return deleted' + entity.name + ' ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();' }}
+        {{ '} catch (Exception e) {' }}
+            {{ 'logger.error("An error occurred while processing the request");' }}
+            {{ 'return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An internal server error occurred. Please try again later.");' }}
+        {{ '}' }}
+    {{ '}' }}
+    {# // DELETE #}
+
+{{ '}' }}
+{# // Class #}
