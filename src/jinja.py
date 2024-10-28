@@ -18,6 +18,7 @@ class Jinja:
         """
         self.jinja_env = None
         self.project_path = None
+        self.java_app_folder_path = None
 
     def set_jinja_env(self, jinja_env):
         """
@@ -33,6 +34,15 @@ class Jinja:
         logging.debug(f'Setting project path variable to "{project_path}"')
         self.project_path = project_path
 
+    def set_java_app_folder_path(self):
+        """
+        Set the Java app folder path.
+        """
+        logging.debug('Setting Java app folder path')
+        java_folder = utils.get_path(self.project_path, cfg.PROJECT_JAVA_FOLDER)
+        java_app_file_path = utils.find_java_app_file(java_folder)
+        self.java_app_folder_path = java_app_file_path.parent
+
     @classmethod
     def generate(self, model, project_path):
         """
@@ -46,8 +56,11 @@ class Jinja:
         self.register_jinja_filters(jinja_env)
         self.set_jinja_env(self, jinja_env)
         self.set_project_path(self, project_path)
+        self.set_java_app_folder_path(self)
         for entity in model.entities:
             self.execute_templates(self, model, entity)
+        # Render template for repository configuration
+        self.render_template(self, model, entity, self.java_app_folder_path, cfg.JAVA_REPOSITORY_CONFIGURATION_TEMPLATE_FILE, cfg.JAVA_REPOSITORY_CONFIGURATION_FILE_NAME)
         logging.info('Jinja templates executed successfully')
 
     def create_jinja_environment(template_folder):
@@ -70,11 +83,8 @@ class Jinja:
         Execute Jinja templates for the given entity and save the generated Java files.
         """
         logging.info(f'Starting to execute Jinja templates for entity "{entity.name}"')
-        java_folder = utils.get_path(self.project_path, cfg.PROJECT_JAVA_FOLDER)
-        java_app_file_path = utils.find_java_app_file(java_folder)
-        java_app_folder_path = java_app_file_path.parent
-        utils.create_folder(java_app_folder_path, entity.name)
-        self.execute_template(self, model, entity, java_app_folder_path)
+        utils.create_folder(self.java_app_folder_path, entity.name)
+        self.execute_template(self, model, entity, self.java_app_folder_path)
         logging.info(f'Jinja templates executed successfully for entity "{entity.name}"')
 
     def execute_template(self, model, entity, folder_path):
@@ -84,6 +94,7 @@ class Jinja:
         self.render_template(self, model, entity, folder_path, cfg.JAVA_CLASS_TEMPLATE_FILE, cfg.JAVA_CLASS_FILE_NAME)
         self.render_template(self, model, entity, folder_path, cfg.JAVA_CONTROLLER_TEMPLATE_FILE, cfg.JAVA_CONTROLLER_FILE_NAME)
         self.render_template(self, model, entity, folder_path, cfg.JAVA_SERVICE_TEMPLATE_FILE, cfg.JAVA_SERVICE_FILE_NAME)
+        self.render_template(self, model, entity, folder_path, cfg.JAVA_REPOSITORY_TEMPLATE_FILE, cfg.JAVA_REPOSITORY_FILE_NAME)
 
     def render_template(self, model, entity, folder_path, template_name, file_name):
         """
@@ -92,11 +103,18 @@ class Jinja:
         logging.debug(f'Loading Jinja template "{template_name}" and rendering it with entity "{entity.name}"')
         template = self.jinja_env.get_template(template_name)
         content = template.render(model=model, entity=entity)
-        java_file_name = file_name % entity.name
-        file_path = utils.get_path(folder_path, entity.name, java_file_name)
-        logging.info(f'Writing content to file "{java_file_name}"')
+        file_path = self.get_render_file_path(entity, folder_path, file_name)
+        logging.info(f'Writing content to file "{file_path.name}"')
         utils.write_to_file(file_path, content)
         self.format_java_file(folder_path, file_path)
+
+    def get_render_file_path(entity, folder_path, file_name):
+        """
+        Get the path to the rendered Java file.
+        """
+        java_file_name = file_name % entity.name if '%s' in file_name else file_name
+        file_path = utils.get_path(folder_path, entity.name if '%s' in file_name else '', java_file_name)
+        return file_path
 
     def format_java_file(folder_path, file_path):
         """
@@ -116,7 +134,7 @@ class Jinja:
 
             current_directory = utils.get_current_path()
             google_format_jar_path = utils.get_path(current_directory, cfg.RESOURCES_FOLDER, google_format_file_name[0])
-            command = f'java -jar {google_format_jar_path} --length 250 --offset 0 --skip-reflowing-long-strings --skip-javadoc-formatting --aosp --replace {file_path}'
+            command = f'java -jar {google_format_jar_path} --skip-reflowing-long-strings --skip-javadoc-formatting --aosp --replace {file_path}'
             subprocess.run(command, shell=True, check=True, cwd=folder_path, capture_output=True, text=True)
         except subprocess.CalledProcessError as e:
             error_message = str(e.stderr).replace('\n', '. ').rstrip('. ')
@@ -137,7 +155,9 @@ class JinjaFilters:
         self.jinja_env = jinja_env
         filters = {
             'constructor_properties': self.constructor_properties,
+            'default_constructor_properties': self.default_constructor_properties,
             'description': self.description,
+            'generated_objects_names': self.generated_objects_names,
             'get_default_value': self.get_default_value,
             'java_type': self.java_type,
             'lowercase': self.lowercase,
@@ -147,6 +167,7 @@ class JinjaFilters:
             'method_type': self.method_type,
             'plural_capitalize': self.plural_capitalize,
             'plural_lowercase': self.plural_lowercase,
+            'repository_configuration_value': self.repository_configuration_value,
             'uppercase_first': self.uppercase_first,
         }
         self.jinja_env.filters.update(filters)
@@ -178,6 +199,45 @@ class JinjaFilters:
         """
         logging.debug(f'Capitalizing first letter of "{word}" leaving the rest')
         return str(word[0]).upper() + word[1:]
+    
+    def default_constructor_properties(self, constructors):
+        """
+        Get the default constructor properties.
+        """
+        logging.debug(f'Getting default constructor properties')
+        for constructor in constructors:
+            if not constructor.default_constructor:
+                continue
+            constructor_properties = []
+            for property in constructor.property_list:
+                if not property.constant and property.property_type.__class__.__name__ != 'IDType':
+                    constructor_properties.append(property)
+            return constructor_properties
+            
+    def generated_objects_names(self, entity_name):
+        """
+        Get the generated objects names.
+        """
+        logging.debug(f'Getting generated objects names')
+        return ', '.join([f'{entity_name}_{i}' for i in range(1, 4)])
+    
+    def repository_configuration_value(self, property):
+        """
+        Get the repository configuration value.
+        """
+        logging.debug(f'Getting repository configuration value for property "{property.name}"')
+        list_type = property.list_type
+        property_type = property.property_type
+        if isinstance(list_type, gc.ListType):
+            java_list_type = self.map_repository_configuration_list_type(list_type)
+            java_method_type = self.java_type(property_type)
+            list_type = java_list_type.format(java_method_type)
+            return list_type
+        elif type(property_type).__name__ == 'Entity':
+            return 'null'
+        elif property_type.type in [cfg.BYTE, cfg.BYTE_W, cfg.SHORT, cfg.SHORT_W]:
+            return f'({str(property_type.type).lower()}) {property_type.default_value}'
+        return property_type.default_value
     
     def description(self, word):
         """
@@ -231,11 +291,11 @@ class JinjaFilters:
 
         if isinstance(type_object, gc.IDType):
             return {
-                cfg.ID: cfg.STRING.capitalize(),
-                cfg.IDENTIFIER: cfg.STRING.capitalize(),
-                cfg.UNIQUE_ID: cfg.STRING.capitalize(),
-                cfg.KEY: cfg.STRING.capitalize(),
-                cfg.PRIMARY_KEY: cfg.STRING.capitalize(),
+                cfg.ID: cfg.LONG.capitalize(),
+                cfg.IDENTIFIER: cfg.LONG.capitalize(),
+                cfg.UNIQUE_ID: cfg.LONG.capitalize(),
+                cfg.KEY: cfg.LONG.capitalize(),
+                cfg.PRIMARY_KEY: cfg.LONG.capitalize(),
             }.get(type_object.type, type_object.type)
         
         elif isinstance(type_object, gc.OtherDataType):
@@ -306,6 +366,14 @@ class JinjaFilters:
         Map a method list default value to the corresponding Java value.
         """
         mapped_list_type = cfg.METHOD_LIST_DEFAULT_VALUE_MAPPING.get(list_type.type, '{}')
+        logging.debug(f'Mapping list type "{list_type.type}" to "{mapped_list_type}"')
+        return mapped_list_type
+    
+    def map_repository_configuration_list_type(self, list_type):
+        """
+        Map a repository configuration list type to the corresponding Java type.
+        """
+        mapped_list_type = cfg.REPOSITORY_CONFIGURATION_LIST_TYPE_MAPPING.get(list_type.type, '{}')
         logging.debug(f'Mapping list type "{list_type.type}" to "{mapped_list_type}"')
         return mapped_list_type
 

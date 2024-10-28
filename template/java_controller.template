@@ -1,11 +1,11 @@
 {{ 'package ' + model.package_tree + '.' + entity.name + ';' }}
 
 {# Imports #}
+{{ 'import io.swagger.v3.oas.annotations.Operation;' }}
+{{ 'import io.swagger.v3.oas.annotations.tags.Tag;' }}
 {{ 'import java.net.URI;' }}
 {{ 'import java.util.List;' }}
 {{ 'import org.slf4j.Logger;' }}
-{{ 'import io.swagger.v3.oas.annotations.tags.Tag;' }}
-{{ 'import io.swagger.v3.oas.annotations.Operation;' }}
 {{ 'import org.springframework.http.HttpStatus;' }}
 {{ 'import org.springframework.http.ResponseEntity;' }}
 {{ 'import org.springframework.web.bind.annotation.DeleteMapping;' }}
@@ -27,6 +27,7 @@
     {# Logger #}
     {{ 'private static final Logger logger = ' + entity.name + '.logger;' }}
     {# // Logger #}
+    
     {# Service injection #}
     {{ 'private final ' + entity.name + 'Service ' + entity.name | lowercase + 'Service;' }}
     {# // Service injection #}
