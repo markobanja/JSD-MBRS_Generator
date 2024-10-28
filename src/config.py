@@ -108,9 +108,13 @@ SPRING_BOOT_APPLICATION_FILE = '*Application.java'
 JAVA_CLASS_TEMPLATE_FILE = 'java_class.template'
 JAVA_CONTROLLER_TEMPLATE_FILE = 'java_controller.template'
 JAVA_SERVICE_TEMPLATE_FILE = 'java_service.template'
+JAVA_REPOSITORY_TEMPLATE_FILE = 'java_repository.template'
+JAVA_REPOSITORY_CONFIGURATION_TEMPLATE_FILE = 'java_repository_configuration.template'
 JAVA_CLASS_FILE_NAME = '%s.java'
 JAVA_CONTROLLER_FILE_NAME = '%sController.java'
 JAVA_SERVICE_FILE_NAME = '%sService.java'
+JAVA_REPOSITORY_FILE_NAME = '%sRepository.java'
+JAVA_REPOSITORY_CONFIGURATION_FILE_NAME = 'RepositoryConfiguration.java'
 # Other
 OK = 'OK'
 WARNING = 'WARNING'
@@ -257,6 +261,14 @@ METHOD_LIST_DEFAULT_VALUE_MAPPING = {
     HASHMAP: 'new HashMap<String, {}>()',
     HASHSET: 'new HashSet<{}>()',
     TREEMAP: 'new TreeMap<String, {}>()',
+}
+REPOSITORY_CONFIGURATION_LIST_TYPE_MAPPING = {
+    LIST: 'new {}[] {{}}',
+    ARRAY: 'new ArrayList<{}>() {{}}',
+    LINKED: 'new LinkedList<{}>() {{}}',
+    HASHMAP: 'new HashMap<String, {}>() {{}}',
+    HASHSET: 'new HashSet<{}>() {{}}',
+    TREEMAP: 'new TreeMap<String, {}>() {{}}',
 }
 RELATIONSHIP_TYPE_MAPPING = {
     '1-1': '@OneToOne',

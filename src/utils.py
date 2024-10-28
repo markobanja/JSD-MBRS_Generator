@@ -267,7 +267,7 @@ def create_syntax_error_message(error):
         expected_value = expected_value.strip().replace('\'', '"')
         if not found_value:
             logging.debug(f'Failed to parse syntax error message: "{error.message}". Returning original error message')
-            message = f'at position ({error.line},{error.col}): Syntax error! {expected_value} but not found.'
+            message = f'at position ({error.line},{error.col}): Context of the syntax error: "{error.context}"! {expected_value} but not found.'
             return message, None, None
         found_value = extract_between_quotes(found_value.strip())
         near_part, found_part = found_value.split('*', 1)

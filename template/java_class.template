@@ -4,8 +4,7 @@
 {% for class_entity in model.entities %}
 {{ 'import ' + model.package_tree + '.' + class_entity.name + '.' + class_entity.name + ';' }}
 {% endfor %}
-{{ 'import org.slf4j.Logger;' }}
-{{ 'import org.slf4j.LoggerFactory;' }}
+{{ 'import io.swagger.v3.oas.annotations.media.Schema;' }}
 {{ 'import jakarta.persistence.Entity;' }}
 {{ 'import jakarta.persistence.Table;' }}
 {{ 'import jakarta.persistence.Id;' }}
@@ -16,8 +15,9 @@
 {{ 'import jakarta.persistence.OneToMany;' }}
 {{ 'import jakarta.persistence.ManyToOne;' }}
 {{ 'import jakarta.persistence.ManyToMany;' }}
-{{ 'import io.swagger.v3.oas.annotations.media.Schema;' }}
-{{ 'import java.util.UUID;' }}
+{{ 'import java.time.LocalDate;' }}
+{{ 'import java.time.LocalTime;' }}
+{{ 'import java.time.LocalDateTime;' }}
 {{ 'import java.util.ArrayList;' }}
 {{ 'import java.util.LinkedList;' }}
 {{ 'import java.util.HashMap;' }}
@@ -26,9 +26,9 @@
 {{ 'import java.util.List;' }}
 {{ 'import java.util.Map;' }}
 {{ 'import java.util.Set;' }}
-{{ 'import java.time.LocalDate;' }}
-{{ 'import java.time.LocalTime;' }}
-{{ 'import java.time.LocalDateTime;' }}
+{{ 'import java.util.UUID;' }}
+{{ 'import org.slf4j.Logger;' }}
+{{ 'import org.slf4j.LoggerFactory;' }}
 {# // Imports #}
 
 {# Class #}
@@ -41,10 +41,10 @@
     {{ '// LOGGER' }}
 	{{ 'static final Logger logger = LoggerFactory.getLogger(' + entity.name + '.class);' }}
     {# // Logger #}
+
     {# Constants #}
     {% set has_constants = entity.properties | selectattr('constant') | list | length > 0 %}
     {% if has_constants %}
-
     {{ '// CONSTANTS' }}
     {% for property in entity.properties if property.constant %}
     {% if property.list_type %}
@@ -57,8 +57,8 @@
     {% endfor %}
     {% endif %}
     {# // Constants #}
-    {# Properties #}
 
+    {# Properties #}
 	{{ '// PROPERTIES' }}
 	{% for property in entity.properties if not property.constant %}
 	{% if property.property_type.__class__.__name__ == 'Entity' %}
@@ -80,9 +80,9 @@
     {% endif %}
 	{% endfor %}
 	{# // Properties #}
+
     {# Constructors #}
     {% if entity.constructors %}
-
     {{ '// CONSTRUCTORS' }}
     {% for constructor in entity.constructors %}
     {% set constructor_properties = constructor.property_list | constructor_properties %}
@@ -109,9 +109,9 @@
     {% endfor %}
     {% endif %}
     {# // Constructors #}
+
     {# // Methods #}
     {% if entity.methods %}
-    
     {{ '// METHODS' }}
     {% for method in entity.methods %}
     {% if method.method_modifier == 'private' %}
@@ -138,8 +138,8 @@
     {% endfor %}
     {% endif %}
     {# // Methods #}
-    {# Getters #}
 
+    {# Getters #}
     {{ '// GETTERS' }}
     {% for property in entity.properties %}
     {% if property.encapsulation.getter %}
@@ -155,9 +155,9 @@
     {% endif %}
     {% endfor %}
     {# // Getters #}
+
     {# Setters #}
     {% if entity.properties | selectattr('encapsulation.setter') | list | length > 0 %}
-
     {{ '// SETTERS' }}
     {% for property in entity.properties %}
     {% if property.encapsulation.setter %}
@@ -174,9 +174,9 @@
     {% endfor %}
     {% endif %}
     {# // Setters #}
+
     {# toString #}
     {% if entity.to_string == 'yes' %}
-
     {{ '// TO STRING' }}
     {{ '@Override' }}
     {{ 'public String toString() {' }}
