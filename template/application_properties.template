@@ -1,0 +1,28 @@
+{{ '# Application name' }}
+{{ 'spring.application.name=' + model.project_name }}
+
+{{ '# DataSource configuration' }}
+{{ 'spring.datasource.url=' + model.database.driver | url + model.database.name }}
+{% if model.database.credentials %}
+{{ 'spring.datasource.username=' + model.database.credentials.username }}
+{{ 'spring.datasource.password=' + model.database.credentials.password}}
+{% endif %}
+{{ 'spring.datasource.driver-class-name=' + model.database.driver | driver }}
+
+{{ '# Hibernate configuration' }}
+{{ 'spring.jpa.properties.hibernate.dialect=' + model.database.driver | dialect }}
+{{ 'spring.jpa.properties.hibernate.temp.use_jdbc_metadata_defaults=false' }}
+{{ 'spring.jpa.properties.hibernate.format_sql=true' }}
+{{ 'spring.jpa.hibernate.ddl-auto=create-drop' }}
+{{ 'spring.jpa.show-sql=true' }}
+
+{{ '# Logging Configuration' }}
+{{ 'logging.level.org.hibernate.SQL=debug' }}
+{{ 'logging.level.org.hibernate.type.descriptor.sql.BasicBinder=trace' }}
+
+{{ '# Connection Pool configuration' }}
+{{ 'spring.datasource.hikari.maximum-pool-size=10' }}
+{{ 'spring.datasource.hikari.minimum-idle=2' }}
+{{ 'spring.datasource.hikari.idle-timeout=30000' }}
+{{ 'spring.datasource.hikari.max-lifetime=1800000' }}
+{{ 'spring.datasource.hikari.connection-timeout=30000' }}

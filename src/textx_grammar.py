@@ -54,6 +54,7 @@ class TextXGrammar:
         self.metamodel = None
         self.model = None
         self.project_path = None
+        self.database_driver = None
 
     def set_metamodel(self, metamodel):
         """
@@ -76,8 +77,15 @@ class TextXGrammar:
         logging.debug(f'Setting project path variable to "{project_path}"')
         self.project_path = project_path
 
+    def set_database_driver(self, database_driver):
+        """
+        Set the database driver.
+        """
+        logging.debug(f'Setting database driver variable to "{database_driver}"')
+        self.database_driver = database_driver
+
     @classmethod
-    def generate(self, project_path, grammar_file_name) -> Response:
+    def generate(self, project_path, grammar_file_name, database_driver) -> Response:
         """
         Generate the metamodel and model from the given project path and grammar file name.
         """
@@ -85,6 +93,7 @@ class TextXGrammar:
             logging.info('Generating metamodel and model')
             utils.folder_exists(cfg.GRAMMAR_FOLDER)
             self.set_project_path(self, project_path)
+            self.set_database_driver(self, database_driver)
             project_grammar_folder_path = utils.get_path(self.project_path, cfg.JSD_MBRS_GENERATOR_FOLDER, cfg.GRAMMAR_FOLDER)
             current_grammar_folder_path = utils.get_path(utils.get_current_path(), cfg.GRAMMAR_FOLDER)
             utils.file_exists(current_grammar_folder_path, cfg.GRAMMAR_FILE)
@@ -294,6 +303,8 @@ class TextXGrammar:
         logging.info(f'Updating variables for class "{model.__class__.__name__}"')
         self.set_package_tree(self, model)
         self.set_build_tool(self, model)
+        self.set_database_driver_flag(self, model)
+        self.set_project_name(self, model)
         self.set_app_file_name(self, model)
         logging.info(f'Successfully updated variables for class "{model.__class__.__name__}"')
 
@@ -303,6 +314,7 @@ class TextXGrammar:
         """
         logging.info(f'Starting semantic checks for the database parameters')
         self.check_database_name(database)
+        self.check_database_driver(self, database)
         self.check_database_username(database)
         self.check_database_password(database)
         logging.info(f'Successfully finished semantic checks for the database parameters')
@@ -403,6 +415,23 @@ class TextXGrammar:
         model.build_tool = build_tool
         logging.debug(f'Build tool for JSD-MBRS model: "{build_tool}"')
 
+    def set_database_driver_flag(self, model):
+        """
+        Set the database driver flag to the model used for indicating if the dependency should be added.
+        """
+        logging.debug('Setting database driver flag for JSD-MBRS model')
+        grammar_database_driver = cfg.DATABASE_MAPPINGS[model.database.driver]['name']
+        model.add_database_dependency = False if self.database_driver is not None and self.database_driver == grammar_database_driver else True
+        logging.debug(f'Add database driver for JSD-MBRS model: "{model.add_database_dependency}"')
+
+    def set_project_name(self, model):
+        """
+        Set the project name to the model.
+        """
+        logging.debug('Setting project name for JSD-MBRS model')
+        model.project_name = self.project_path.name
+        logging.debug(f'Project name for JSD-MBRS model: "{model.project_name}"')
+
     def set_app_file_name(self, model):
         """
         Set the app file name to the model.
@@ -423,6 +452,17 @@ class TextXGrammar:
             error_message = cfg.DATABASE_NAME_ERROR % (str(database.driver).capitalize(), database.name, cfg.SQL_DATABASE_NAME_ERROR)
             logging.error(error_message)
             raise SemanticError(error_message, **get_location(database), search_value=database.name, err_type='database_name_error')
+        
+    def check_database_driver(self, database):
+        """
+        Check if the database driver is a valid SQL database driver.
+        Raise a SemanticError if the database driver is not valid.
+        """
+        grammar_database_driver = cfg.DATABASE_MAPPINGS[database.driver]['name']
+        if self.database_driver and grammar_database_driver is not self.database_driver:
+            error_message = cfg.DATABASE_DRIVER_ERROR % (self.database_driver, grammar_database_driver)
+            logging.error(error_message)
+            raise SemanticError(error_message, **get_location(database), search_value=database.driver, err_type='database_driver_error')
 
     def check_database_username(database):
         """

@@ -150,7 +150,7 @@ def is_spring_boot_application(folder_path):
     # Check if all required source folders exist
     has_source_folders = all(
         isdir(get_path(folder_path, source_folder))
-        for source_folder in ['src/main/java', 'src/main/resources', 'src/test/java']  # Required source folders for a Spring Boot application
+        for source_folder in [cfg.PROJECT_JAVA_FOLDER, cfg.PROJECT_RESOURCES_FOLDER, cfg.PROJECT_TEST_JAVA_FOLDER]  # Required source folders for a Spring Boot application
     )
     logging.debug(f'Source folders exist: {has_source_folders}')
     is_spring_boot = build_tool is not None and has_source_folders
@@ -183,6 +183,23 @@ def check_dependencies(build_tool, dependencies_to_check, build_content):
     logging.warning(f'Could not find the dependencies section in the "{build_tool}" configuration file')
     return cfg.ERROR
 
+def get_database_driver_dependency(build_tool, build_content):
+    """
+    Extracts the database driver dependency from the build configuration content.
+    """
+    logging.debug(f'Finding database driver dependency in "{build_tool}" build configuration')
+    dependencies_section = get_dependencies_section(build_tool, build_content)
+    if not dependencies_section:
+        logging.warning(f'Could not find the dependencies section in the "{build_tool}" configuration file')
+        return cfg.ERROR
+    
+    for driver_name, dependency in cfg.DATABASE_DEPENDENCY_MAPPING[build_tool].items():
+        if dependency in dependencies_section:
+            logging.debug(f'Database driver dependency found: "{driver_name}"')
+            return driver_name
+    
+    logging.debug('Database driver dependency not found')
+    return None
 
 def get_dependencies_section(build_tool, build_content):
     """
