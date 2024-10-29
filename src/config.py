@@ -31,6 +31,7 @@ CONSOLE_LOG_LEVEL_TAGS = {
     'ERROR': '[ERROR]',
 }
 DEFAULT_CONTENT = 'Hello World!'
+LOADING_SYMBOLS = ["⠋", "⠙", "⠚", "⠞", "⠖", "⠦", "⠴", "⠲", "⠳", "⠓"]
 # Main window
 MAIN_WINDOW_TITLE = 'JSD-MBRS Generator'
 MAIN_WINDOW_WIDTH = 800
