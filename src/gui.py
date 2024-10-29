@@ -78,6 +78,7 @@ class MainWindowGUI:
         self.build_tool = None
         self.grammar_file_name = None
         self.grammar_file_content = None
+        self.database_driver = None
         self.busy = False
         self.save_event = threading.Event()  # Event for synchronization
         self.symbol_index = 0
@@ -221,7 +222,7 @@ class MainWindowGUI:
                 return
             
             self.init_variables()
-            self.project_path = project_path
+            self.project_path = utils.get_path(project_path, '')
             self.project_name = utils.get_base_name(self.project_path)
             logging.info(f'Checking if folder "{self.project_name}" is a valid Spring Boot application')
             self.build_tool, is_spring_boot = utils.is_spring_boot_application(self.project_path)
@@ -298,6 +299,10 @@ class MainWindowGUI:
                     messagebox.showwarning(title='Warning', message='Please save the grammar file first!')
                     self.generate_button.config(state=tk.DISABLED)
                     return
+                
+                # Check if the project dependencies are valid
+                if not self.check_project_dependencies():
+                    return
 
                 logging.info('Starting generate action')
                 self.window.update_idletasks()
@@ -307,9 +312,10 @@ class MainWindowGUI:
                 self.save_event.wait()
 
                 self.busy = True
+                self.remove_error_color()
                 loading_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} Generating, please wait...'
                 self.update_loading_animation(loading_text)
-                response = tg.generate(self.project_path, self.grammar_file_name)
+                response = tg.generate(self.project_path, self.grammar_file_name, self.database_driver)
                 if response.status is cfg.OK:
                     self.export_button.config(state=tk.NORMAL)
                     response_color = OK_COLOR
@@ -488,6 +494,7 @@ class MainWindowGUI:
         logging.info('Checking project dependencies')
         build_tool_dependency = BuildToolDependency(self.project_name, self.project_path, self.build_tool)
         response = build_tool_dependency.check_dependencies()
+        self.set_database_driver(response.database_driver)
         if response.status == cfg.OK:
             logging.info('Project dependencies are valid')
             return True
@@ -606,7 +613,10 @@ class MainWindowGUI:
         Set the color of the words in the text editor.
         """
         logging.debug('Setting color to text')
-        self.set_default_font_color(DEFAULT_FONT_COLOR)  # Set the default font color first
+        self.remove_error_color()
+
+        # Set the default font color first
+        self.set_default_font_color(DEFAULT_FONT_COLOR)  
 
         # Apply color to text based on the color mappings
         for words_list, color in self.color_mappings:
@@ -617,6 +627,14 @@ class MainWindowGUI:
         self.property_value_color(PROPERTY_VALUE_COLOR)
         self.comment_color(COMMENT_COLOR)  # Color comments last to override other colors
         logging.debug('Color set to text')
+
+    def remove_error_color(self):
+        """
+        Remove the error color from the text editor.
+        """
+        logging.debug('Removing error color')
+        self.text_editor.tag_remove(ERROR_COLOR, '1.0', tk.END)
+        logging.debug('Error color removed')
 
     def set_default_font_color(self, color):
         """
@@ -799,7 +817,6 @@ class MainWindowGUI:
         """
         logging.debug(f'Applying color "{color}" to text')
         self.text_editor.tag_remove(color, '1.0', tk.END)
-        self.text_editor.tag_remove(ERROR_COLOR, '1.0', tk.END)
         self.text_editor.tag_configure(color, foreground=color)
         for word in text_list:
             start_index = '1.0'
@@ -888,6 +905,13 @@ class MainWindowGUI:
         """
         logging.debug(f'Setting grammar name: "{grammar_file_name}"')
         self.grammar_file_name = grammar_file_name
+
+    def set_database_driver(self, database_driver):
+        """
+        Set the database driver.
+        """
+        logging.debug(f'Setting database driver: "{database_driver}"')
+        self.database_driver = database_driver
 
 
 class HelpWindowGUI(tk.Toplevel):

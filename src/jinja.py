@@ -6,6 +6,7 @@ import jinja2
 import src.config as cfg
 import src.grammar_classes as gc
 import src.utils as utils
+from src.build_tool_dependency import BuildToolDependency
 
 
 class Jinja:
@@ -67,6 +68,10 @@ class Jinja:
         self.set_project_path(self, project_path)
         self.set_java_app_folder_path(self)
 
+        # Add database dependency and render template for application.properties file
+        if model.add_database_dependency:
+            self.add_database_dependency(self, model)
+
         # Render template for each entity
         for entity in model.entities:
             self.execute_templates(self, model, entity)
@@ -75,8 +80,7 @@ class Jinja:
         self.render_template(self, model, entity, self.java_app_folder_path, cfg.JAVA_REPOSITORY_CONFIGURATION_TEMPLATE_FILE, cfg.JAVA_REPOSITORY_CONFIGURATION_FILE_NAME)
         
         # Render template for Application
-        render_app_file = utils.check_app_file_content(self.java_app_file_path)
-        if render_app_file:
+        if utils.check_app_file_content(self.java_app_file_path):
             self.render_template(self, model, entity, self.java_app_folder_path, cfg.JAVA_APPLICATION_TEMPLATE_FILE, cfg.JAVA_APPLICATION_FILE_NAME)
         logging.info('Jinja templates executed successfully')
 
@@ -95,6 +99,18 @@ class Jinja:
         JinjaFilters(jinja_env)
         logging.debug('Jinja filters registered successfully')
 
+    def add_database_dependency(self, model):
+        """
+        Add database dependency to the project.
+        """
+        logging.info('Adding database dependency to the project')
+        project_name = utils.get_base_name(self.project_path)
+        build_tool_dependency = BuildToolDependency(project_name, self.project_path, model.build_tool, model.database)
+        build_tool_dependency.add_driver_dependency()
+        resources_path = utils.get_path(self.project_path, cfg.PROJECT_RESOURCES_FOLDER)
+        utils.folder_exists(resources_path)
+        self.render_template(self, model, None, resources_path, cfg.APPLICATION_PROPERTIES_TEMPLATE_FILE, cfg.APPLICATION_PROPERTIES_FILE_NAME)
+
     def execute_templates(self, model, entity):
         """
         Execute Jinja templates for the given entity and save the generated Java files.
@@ -108,6 +124,7 @@ class Jinja:
         """
         Execute the Jinja template for the given entity and save the generated Java file in the specified folder.
         """
+        logging.debug(f'Executing Jinja template for entity "{entity.name}"')
         self.render_template(self, model, entity, folder_path, cfg.JAVA_CLASS_TEMPLATE_FILE, cfg.JAVA_CLASS_FILE_NAME)
         self.render_template(self, model, entity, folder_path, cfg.JAVA_CONTROLLER_TEMPLATE_FILE, cfg.JAVA_CONTROLLER_FILE_NAME)
         self.render_template(self, model, entity, folder_path, cfg.JAVA_SERVICE_TEMPLATE_FILE, cfg.JAVA_SERVICE_FILE_NAME)
@@ -117,7 +134,7 @@ class Jinja:
         """
         Load the Jinja template for the given entity and save the generated Java file.
         """
-        logging.debug(f'Loading Jinja template "{template_name}" and rendering it with entity "{entity.name}"')
+        logging.debug(f'Loading Jinja template "{template_name}"')
         template = self.jinja_env.get_template(template_name)
         content = template.render(model=model, entity=entity)
         file_path = self.get_render_file_path(entity, folder_path, file_name)
@@ -179,9 +196,12 @@ class JinjaFilters:
             'constructor_properties': self.constructor_properties,
             'default_constructor_properties': self.default_constructor_properties,
             'description': self.description,
+            'dialect': self.dialect,
+            'driver': self.driver,
             'generated_objects_names': self.generated_objects_names,
             'get_default_value': self.get_default_value,
             'java_type': self.java_type,
+            'url': self.url,
             'lowercase': self.lowercase,
             'map_list_type': self.map_list_type,
             'map_relationship_type': self.map_relationship_type,
@@ -221,6 +241,33 @@ class JinjaFilters:
         """
         logging.debug(f'Capitalizing first letter of "{word}" leaving the rest')
         return f'{str(word[0]).upper()}{word[1:]}'
+    
+    def url(self, database_name):
+        """
+        Get the url.
+        """
+        logging.debug(f'Getting url')
+        url = cfg.DATABASE_MAPPINGS[database_name]['url']
+        logging.debug(f'url: {url}')
+        return url
+    
+    def driver(self, database_name):
+        """
+        Get the driver.
+        """
+        logging.debug(f'Getting driver')
+        driver = cfg.DATABASE_MAPPINGS[database_name]['driver']
+        logging.debug(f'Driver: {driver}')
+        return driver
+    
+    def dialect(self, database_name):
+        """
+        Get the dialect.
+        """
+        logging.debug(f'Getting dialect')
+        dialect = cfg.DATABASE_MAPPINGS[database_name]['dialect']
+        logging.debug(f'Dialect: {dialect}')
+        return dialect
     
     def default_constructor_properties(self, constructors):
         """

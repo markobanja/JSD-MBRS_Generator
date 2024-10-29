@@ -50,7 +50,7 @@ RULE_DEFINED_WORDS = ['Database', 'class', 'Constructors', 'Methods', 'toString'
 GRAMMAR_DEFINED_WORDS = ['driver', 'database name', 'username', 'password', 'public', 'abstract', 'final', 'private', 'protected', 'empty', 'default', 'static', 'id', 'identifier', 'uniqueId', 'key', 'primaryKey', 'yes', 'no', '1-1', '1-n', 'n-1', 'n-n']
 TYPE_DEFINED_WORDS = ['byte', 'short', 'char', 'int', 'float', 'long', 'double', 'boolean', 'str', 'string', 'String', 'date', 'time', 'datetime']
 WRAPPER_TYPE_DEFINED_WORDS = ['Byte', 'Short', 'Character', 'Integer', 'Float', 'Long', 'Double', 'Boolean']
-KEYWORD_DEFINED_WORDS = ['constant', 'const', 'array', 'linked', 'hashmap', 'hashset', 'treemap', 'list',  'void']
+KEYWORD_DEFINED_WORDS = ['constant', 'const', 'array', 'linked', 'hashmap', 'hashset', 'treemap', 'list',  'void', 'postgresql', 'mysql', 'sqlserver', 'oracle']
 ENCAPSULATION_DEFINED_WORDS = ['getter', 'get', 'setter', 'set']
 # Other
 KEYSYMS_TO_IGNORE = ['Shift_L', 'Shift_R', 'Control_L', 'Control_R', 'Alt_L', 'Alt_R', 'Left', 'Right', 'Up', 'Down']
@@ -83,6 +83,52 @@ DEPENDENCIES_TO_CHECK = {
         'Swagger UI': '<dependency>\n\t\t\t<groupId>org.springdoc</groupId>\n\t\t\t<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>\n\t\t\t<version>2.6.0</version>\n\t\t</dependency>',
     },
 }
+DATABASE_MAPPINGS = {
+    'postgresql':{
+        'name': 'PostgreSQL',
+        'url': 'jdbc:postgresql://localhost:5432/',
+        'driver': 'org.postgresql.Driver',
+        'dialect': 'org.hibernate.dialect.PostgreSQLDialect',
+    },
+    'mysql':{
+        'name': 'MySQL',
+        'url': 'jdbc:mysql://localhost:3306/',
+        'driver': 'com.mysql.cj.jdbc.Driver',
+        'dialect': 'org.hibernate.dialect.MySQL8Dialect',
+    },
+    'sqlserver':{
+        'name': 'MS SQL Server',
+        'url': 'jdbc:sqlserver://localhost:1433;databaseName=',
+        'driver': 'com.microsoft.sqlserver.jdbc.SQLServerDriver',
+        'dialect': 'org.hibernate.dialect.SQLServer2012Dialect',
+    },
+    'oracle':{
+        'name': 'Oracle',
+        'url': 'jdbc:oracle:thin:@localhost:1521:',
+        'driver': 'oracle.jdbc.OracleDriver',
+        'dialect': 'org.hibernate.dialect.Oracle12cDialect',
+    }
+}
+DATABASE_DEPENDENCY_MAPPING = {
+    GRADLE_GROOVY: {
+        'PostgreSQL': "runtimeOnly 'org.postgresql:postgresql'",
+        'MySQL': "runtimeOnly 'com.mysql:mysql-connector-j'",
+        'MS SQL Server': "runtimeOnly 'com.microsoft.sqlserver:mssql-jdbc'",
+        'Oracle': "runtimeOnly 'com.oracle.database.jdbc:ojdbc11'",
+    },
+    GRADLE_KOTLIN: {
+        'PostgreSQL': 'runtimeOnly("org.postgresql:postgresql")',
+        'MySQL': 'runtimeOnly("com.mysql:mysql-connector-j")',
+        'MS SQL Server': 'runtimeOnly("com.microsoft.sqlserver:mssql-jdbc")',
+        'Oracle': 'runtimeOnly("com.oracle.database.jdbc:ojdbc11")',
+    },
+    MAVEN: {
+        'PostgreSQL': '<dependency>\n\t\t\t<groupId>org.postgresql</groupId>\n\t\t\t<artifactId>postgresql</artifactId>\n\t\t\t<scope>runtime</scope>\n\t\t</dependency>',
+        'MySQL': '<dependency>\n\t\t\t<groupId>com.mysql</groupId>\n\t\t\t<artifactId>mysql-connector-j</artifactId>\n\t\t\t<scope>runtime</scope>\n\t\t</dependency>',
+        'MS SQL Server': '<dependency>\n\t\t\t<groupId>com.microsoft.sqlserver</groupId>\n\t\t\t<artifactId>mssql-jdbc</artifactId>\n\t\t\t<scope>runtime</scope>\n\t\t</dependency>',
+        'Oracle': '<dependency>\n\t\t\t<groupId>com.oracle.database.jdbc</groupId>\n\t\t\t<artifactId>ojdbc11</artifactId>\n\t\t\t<scope>runtime</scope>\n\t\t</dependency>',
+    },
+}
 # Build tool regex
 GRADLE_REGEX = r"dependencies\s*{\s*([\s\S]*?)\s*}"
 MAVEN_REGEX = r"<dependencies>\s*([\s\S]*?)\s*</dependencies>"
@@ -102,6 +148,8 @@ EXPORT_FOLDER = 'export'
 EXPORT_DOT_FOLDER = 'dot'
 EXPORT_PLANTUML_FOLDER = 'plantuml'
 PROJECT_JAVA_FOLDER = 'src/main/java'
+PROJECT_RESOURCES_FOLDER = 'src/main/resources'
+PROJECT_TEST_JAVA_FOLDER = 'src/test/java'
 # Files
 GRAMMAR_FILE = 'jsd_mbrs_generator_grammar.tx'
 HELP_FILE = 'help.txt'
@@ -112,12 +160,14 @@ JAVA_SERVICE_TEMPLATE_FILE = 'java_service.template'
 JAVA_REPOSITORY_TEMPLATE_FILE = 'java_repository.template'
 JAVA_REPOSITORY_CONFIGURATION_TEMPLATE_FILE = 'java_repository_configuration.template'
 JAVA_APPLICATION_TEMPLATE_FILE = 'java_application.template'
+APPLICATION_PROPERTIES_TEMPLATE_FILE = 'application_properties.template'
 JAVA_CLASS_FILE_NAME = '%s.java'
 JAVA_CONTROLLER_FILE_NAME = '%sController.java'
 JAVA_SERVICE_FILE_NAME = '%sService.java'
 JAVA_REPOSITORY_FILE_NAME = '%sRepository.java'
 JAVA_REPOSITORY_CONFIGURATION_FILE_NAME = 'RepositoryConfiguration.java'
 JAVA_APPLICATION_FILE_NAME = '%sApplication.java'
+APPLICATION_PROPERTIES_FILE_NAME = 'application.properties'
 # Other
 OK = 'OK'
 WARNING = 'WARNING'
@@ -173,6 +223,7 @@ LIST = 'list'
 # CUSTOM ERROR MESSAGES
 UNIQUE_CLASS_NAMES_ERROR = 'Class name "%s" already exists! Each class name must be unique.'
 DATABASE_NAME_ERROR = '%s database name "%s" is not a valid SQL database name! %s'
+DATABASE_DRIVER_ERROR = 'The "%s" database driver dependency is already specified in the Application file and it does not match the provided "%s" database driver! Please either update the database driver in the grammar or modify the existing driver dependency in the Application file.'
 DATABASE_USERNAME_ERROR = '%s database username "%s" is not a valid SQL database username! %s'
 DATABASE_PASSWORD_ERROR = 'Provided %s database password "%s" is not a valid SQL database password! %s'
 CLASS_NAME_ERROR = 'Class name "%s" is not a valid Java class name! %s'

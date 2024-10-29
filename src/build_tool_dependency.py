@@ -8,19 +8,20 @@ class Response:
     """
     Class for creating the response object from a functions.
     """
-    def __init__(self, status, message=None):
+    def __init__(self, status, message=None, database_driver=None):
         """
         Constructor for the Response class.
         """
         self.status = status
         self.message = message
+        self.database_driver = database_driver
 
 
 class BuildToolDependency:
     """
     Class for checking the dependencies in the build configuration file.
     """
-    def __init__(self, project_name, project_path, build_tool):
+    def __init__(self, project_name, project_path, build_tool, database_driver=None):
         """
         Constructor for the BuildToolDependency class.
         """
@@ -29,6 +30,7 @@ class BuildToolDependency:
         self.project_name = project_name
         self.project_path = project_path
         self.build_tool = build_tool
+        self.database_driver = database_driver
         self.config_file_name = self.get_config_file_name()
         self.build_config_path = utils.get_path(self.project_path, self.config_file_name)
 
@@ -59,6 +61,7 @@ class BuildToolDependency:
         file_name = cfg.BUILD_TOOL_FILE_MAPPING[self.build_tool]
         dependencies_to_check = cfg.DEPENDENCIES_TO_CHECK.get(self.build_tool, {})
         missing_dependencies = utils.check_dependencies(self.build_tool, dependencies_to_check, self.build_content)
+        database_driver_dependency = utils.get_database_driver_dependency(self.build_tool, self.build_content)
 
         # Failed to find the dependencies section in the build.gradle configuration file
         if missing_dependencies is cfg.ERROR:
@@ -75,9 +78,9 @@ class BuildToolDependency:
             return Response(status=cfg.ERROR, message=message)
 
         # No missing dependencies
-        return Response(status=cfg.OK)
+        return Response(status=cfg.OK, database_driver=database_driver_dependency)
 
-    def add_missing_dependencies(self) -> None:
+    def add_missing_dependencies(self):
         """
         Adds the missing dependencies to the build configuration file.
         """
@@ -86,6 +89,24 @@ class BuildToolDependency:
         dependencies_section = utils.get_dependencies_section(self.build_tool, self.build_content)
         for dependency in self.missing_dependencies.values():
             self.build_content = self.build_content.replace(dependencies_section, f"{dependencies_section}{splitter}{dependency}")
+
+        # Write back the updated content to build.gradle
+        with open(self.build_config_path, 'w') as file:
+            file.write(self.build_content)
+
+    def add_driver_dependency(self):
+        """
+        Adds the driver dependency to the build configuration file.
+        """
+        logging.info('Adding driver dependency to the build configuration file')
+        utils.file_exists(self.project_path, self.config_file_name)
+        with open(self.build_config_path, 'r') as file:
+            self.build_content = file.read()
+        
+        splitter = '\n\n\t\t' if self.build_tool == cfg.MAVEN else '\n\t'
+        database_driver = cfg.DATABASE_MAPPINGS[self.database_driver.driver]['name']
+        dependencies_section = utils.get_dependencies_section(self.build_tool, self.build_content)
+        self.build_content = self.build_content.replace(dependencies_section, f"{dependencies_section}{splitter}{cfg.DATABASE_DEPENDENCY_MAPPING[self.build_tool][database_driver]}")
 
         # Write back the updated content to build.gradle
         with open(self.build_config_path, 'w') as file:
