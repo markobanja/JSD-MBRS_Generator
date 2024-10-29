@@ -19,6 +19,7 @@ class Jinja:
         self.jinja_env = None
         self.project_path = None
         self.java_app_folder_path = None
+        self.java_app_file_path = None
 
     def set_jinja_env(self, jinja_env):
         """
@@ -34,6 +35,13 @@ class Jinja:
         logging.debug(f'Setting project path variable to "{project_path}"')
         self.project_path = project_path
 
+    def set_java_app_file_path(self, java_app_file_path):
+        """
+        Set the Java app file path.
+        """
+        logging.debug('Setting Java app file path')
+        self.java_app_file_path = java_app_file_path
+
     def set_java_app_folder_path(self):
         """
         Set the Java app folder path.
@@ -41,6 +49,7 @@ class Jinja:
         logging.debug('Setting Java app folder path')
         java_folder = utils.get_path(self.project_path, cfg.PROJECT_JAVA_FOLDER)
         java_app_file_path = utils.find_java_app_file(java_folder)
+        self.set_java_app_file_path(self, java_app_file_path)
         self.java_app_folder_path = java_app_file_path.parent
 
     @classmethod
@@ -57,10 +66,18 @@ class Jinja:
         self.set_jinja_env(self, jinja_env)
         self.set_project_path(self, project_path)
         self.set_java_app_folder_path(self)
+
+        # Render template for each entity
         for entity in model.entities:
             self.execute_templates(self, model, entity)
+        
         # Render template for repository configuration
         self.render_template(self, model, entity, self.java_app_folder_path, cfg.JAVA_REPOSITORY_CONFIGURATION_TEMPLATE_FILE, cfg.JAVA_REPOSITORY_CONFIGURATION_FILE_NAME)
+        
+        # Render template for Application
+        render_app_file = utils.check_app_file_content(self.java_app_file_path)
+        if render_app_file:
+            self.render_template(self, model, entity, self.java_app_folder_path, cfg.JAVA_APPLICATION_TEMPLATE_FILE, cfg.JAVA_APPLICATION_FILE_NAME)
         logging.info('Jinja templates executed successfully')
 
     def create_jinja_environment(template_folder):
@@ -112,8 +129,13 @@ class Jinja:
         """
         Get the path to the rendered Java file.
         """
-        java_file_name = file_name % entity.name if '%s' in file_name else file_name
-        file_path = utils.get_path(folder_path, entity.name if '%s' in file_name else '', java_file_name)
+        java_file_name = file_name
+        if 'Application' in file_name:
+            java_file_name = file_name % entity.parent.build_tool
+        elif '%s' in file_name:
+            java_file_name = file_name % entity.name
+            folder_path = utils.get_path(folder_path, entity.name)
+        file_path = utils.get_path(folder_path, java_file_name)
         return file_path
 
     def format_java_file(folder_path, file_path):
@@ -198,7 +220,7 @@ class JinjaFilters:
         Capitalize the first letter of the given word leaving the rest.
         """
         logging.debug(f'Capitalizing first letter of "{word}" leaving the rest')
-        return str(word[0]).upper() + word[1:]
+        return f'{str(word[0]).upper()}{word[1:]}'
     
     def default_constructor_properties(self, constructors):
         """
