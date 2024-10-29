@@ -17,13 +17,13 @@ Credentials:
 ;
 
 Entity:
-    (class_modifier=Modifier)? 'class' name=NamePattern '{'
+    (class_modifier=ClassModifier)? 'class' name=NamePattern '{'
         properties+=Property
         'Constructors' '{' 
-            constructors+=Constructors[',']
+            constructors+=Constructor[',']
         '}'
         'Methods' '{'
-            (methods+=Methods[','])?
+            (methods+=Method[','])?
         '}'
         'toString:' to_string=YesNoValue
     '}'
@@ -33,7 +33,7 @@ Driver:
     'postgresql' | 'mysql' | 'sqlserver' | 'oracle'
 ;
 
-Modifier:
+ClassModifier:
     'public' | 'abstract' | 'final' | ''
 ;
 
@@ -41,20 +41,32 @@ Property:
     name=NamePattern ':' (constant?=Constant)? property_type=[Type] (list_type=[ListType])? (relationship=Relationship)? (encapsulation=Encapsulation)? (property_value=Value)? ';'
 ;
 
-Constructors:
+Constructor:
     empty_constructor?='empty' | default_constructor?='default' | '[' property_list=[Property] (', ' property_list=[Property])* ']'
 ;
 
-Methods:
-    VoidMethod | ReturnMethod
+Method:
+    method_modifier=MethodMofidier (static?='static')? method_declaration=MethodDeclaration name=NamePattern '(' (property_list=[Property] (', ' property_list=[Property])*)? ')'
 ;
 
-VoidMethod:
-    (static?='static')? 'void' name=NamePattern '(' (property_list=[Property] (', ' property_list=[Property])*)? ')'
+MethodMofidier:
+    'public' | 'private' | 'protected' | 'final' | ''
 ;
 
-ReturnMethod:
-    (static?='static')? method_type=[Type] name=NamePattern '(' (property_list=[Property] (', ' property_list=[Property])*)? ')'
+MethodDeclaration:
+    VoidMethodType | ListMethodType | RestMethodType
+;
+
+VoidMethodType:
+    method_type='void'
+;
+
+ListMethodType:
+    list_type=[ListType] '(' method_type=[Type] ')'
+;
+
+RestMethodType:
+    method_type=[Type]
 ;
 
 Type:
@@ -98,11 +110,11 @@ PrimitiveDataTypes:
 ;
 
 WrapperDataTypes:
-    'Integer' | 'Float' | 'Double' | 'Boolean'
+    'Byte' | 'Short' | 'Character' | 'Integer' | 'Float' | 'Long' | 'Double' | 'Boolean'
 ;
 
 OtherDataTypes:
-    'string'
+    'str' | 'string' | 'String'
 ;
 
 DateTypes:
