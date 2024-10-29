@@ -1,3 +1,4 @@
+import os
 import logging
 import threading
 
@@ -79,6 +80,7 @@ class MainWindowGUI:
         self.grammar_file_content = None
         self.busy = False
         self.save_event = threading.Event()  # Event for synchronization
+        self.symbol_index = 0
         self.color_mappings = [
             (cfg.RULE_DEFINED_WORDS, RULE_DEFINED_WORDS_COLOR),
             (cfg.GRAMMAR_DEFINED_WORDS, GRAMMAR_DEFINED_WORDS_COLOR),
@@ -298,7 +300,6 @@ class MainWindowGUI:
                     return
 
                 logging.info('Starting generate action')
-                self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} Generating, please wait...', fg=INFORMATION_COLOR)
                 self.window.update_idletasks()
 
                 # Wait for save action to complete
@@ -306,6 +307,8 @@ class MainWindowGUI:
                 self.save_event.wait()
 
                 self.busy = True
+                loading_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} Generating, please wait...'
+                self.update_loading_animation(loading_text)
                 response = tg.generate(self.project_path, self.grammar_file_name)
                 if response.status is cfg.OK:
                     self.export_button.config(state=tk.NORMAL)
@@ -343,7 +346,8 @@ class MainWindowGUI:
             try:
                 export_folder = utils.get_path(cfg.JSD_MBRS_GENERATOR_FOLDER, cfg.EXPORT_FOLDER)
                 logging.info(f'Starting to export metamodel and model files to the "{export_folder}" folder')
-                self.console_output.config(text=f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} Exporting, please wait...', fg=INFORMATION_COLOR)
+                loading_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} Exporting, please wait...'
+                self.update_loading_animation(loading_text)
                 self.window.update_idletasks()
 
                 # Export the metamodel and model to the project folder
@@ -448,6 +452,7 @@ class MainWindowGUI:
         logging.info('Handling main window close event')
         self.window.destroy()
         self.window.quit()
+        os._exit(0)
 
     def initial_state(self):
         """
@@ -821,6 +826,18 @@ class MainWindowGUI:
         is_whole_word = not (before_char.isalnum() or after_char.isalnum())
         logging.debug(f'Result: {is_whole_word}')
         return is_whole_word
+    
+    def update_loading_animation(self, loading_text):
+        """
+        Update the loading animation in the console output if the console is busy.
+        """
+        if not self.busy:
+            return
+        logging.debug('Updating loading animation')
+        self.symbol_index = (self.symbol_index + 1) % len(cfg.LOADING_SYMBOLS)
+        loading_animation = f'{loading_text} {cfg.LOADING_SYMBOLS[self.symbol_index]}'
+        self.console_output.config(text=loading_animation, fg=INFORMATION_COLOR)
+        self.console_output.after(50, lambda: self.update_loading_animation(loading_text))
 
     def get_text_editor_content(self):
         """
