@@ -250,7 +250,7 @@ def pluralize_word(word, lowercase=False):
     elif re.search('[aeiou]y$', word):
         plural = re.sub('y$', 'ies', word)
     else:
-        plural = word + 's'
+        plural = f'{word}s'
     plural = plural.lower() if lowercase else plural.capitalize()
     logging.debug(f"Pluralized '{word}' to '{plural}'")
     return plural
@@ -351,6 +351,16 @@ def check_value_regex(regex_pattern, value_to_check):
     """
     logging.debug(f'Checking if value "{value_to_check}" matches regex pattern "{regex_pattern}"')
     return bool(re.match(regex_pattern, value_to_check))
+
+def check_app_file_content(file_path):
+    """
+    Checks if the provided file contains the OpenAPI definition.
+    """
+    logging.debug(f'Checking if file "{file_path}" contains the OpenAPI definition')
+    content = read_file(file_path)
+    pattern_info = re.compile(cfg.OPEN_API_DEFINITION_REGEX, re.DOTALL)
+    # Returns True if the pattern is not found in the content
+    return not pattern_info.search(content)
 
 def check_property_value(property_type, property_value):
     """

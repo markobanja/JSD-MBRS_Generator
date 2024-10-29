@@ -291,6 +291,11 @@ class TextXGrammar:
         logging.info(f'Starting semantic checks for JSD-MBRS Generator "{model.__class__.__name__}"')
         self.check_unique_class_names(model)
         logging.info(f'Successfully finished semantic checks for JSD-MBRS Generator "{model.__class__.__name__}"')
+        logging.info(f'Updating variables for class "{model.__class__.__name__}"')
+        self.set_package_tree(self, model)
+        self.set_build_tool(self, model)
+        self.set_app_file_name(self, model)
+        logging.info(f'Successfully updated variables for class "{model.__class__.__name__}"')
 
     def database_processor(self, database):
         """
@@ -317,7 +322,6 @@ class TextXGrammar:
         self.check_unique_methods(self, entity)
         logging.info(f'Successfully finished semantic checks for class "{entity.name}"')
         logging.info(f'Updating variables for class "{entity.name}"')
-        self.package_tree(self, entity)
         self.set_entity_id_property_value(entity)
         logging.info(f'Successfully updated variables for class "{entity.name}"')
 
@@ -376,6 +380,38 @@ class TextXGrammar:
                 logging.error(error_message)
                 raise SemanticError(error_message, **get_location(entity), search_value=entity.name, err_type='unique_class_names_error')
             class_names.add(entity.name)
+
+    # MODEL UPDATE FUNCTIONS
+    def set_package_tree(self, model):
+        """
+        Create and add the package tree to the model.
+        """
+        logging.debug('Finding package tree for JSD-MBRS model')
+        java_folder = utils.get_path(self.project_path, cfg.PROJECT_JAVA_FOLDER)
+        java_app_file_path = utils.find_java_app_file(java_folder)
+        java_app_folder_path = java_app_file_path.parent
+        package_tree = utils.get_import_package_tree(java_app_folder_path, cfg.PROJECT_JAVA_FOLDER)
+        logging.debug(f'Package tree for JSD-MBRS model: "{package_tree}"')
+        model.package_tree = package_tree
+
+    def set_build_tool(self, model):
+        """
+        Set the build tool to the model.
+        """
+        logging.debug('Setting build tool for JSD-MBRS model')
+        build_tool = utils.detect_build_tool(self.project_path)
+        model.build_tool = build_tool
+        logging.debug(f'Build tool for JSD-MBRS model: "{build_tool}"')
+
+    def set_app_file_name(self, model):
+        """
+        Set the app file name to the model.
+        """
+        logging.debug('Setting app file name for JSD-MBRS model')
+        java_folder = utils.get_path(self.project_path, cfg.PROJECT_JAVA_FOLDER)
+        java_app_file_path = utils.find_java_app_file(java_folder)
+        model.app_file_name = java_app_file_path.stem
+        logging.debug(f'App file name for JSD-MBRS model: "{java_app_file_path.name}"')
 
     # DATABASE SEMANTIC CHECKS
     def check_database_name(database):
@@ -506,19 +542,6 @@ class TextXGrammar:
             methods.add(method_name)
 
     # CLASS UPDATE FUNCTIONS
-    def package_tree(self, entity):
-        """
-        Create and add the package tree to the model.
-        """
-        logging.debug('Finding package tree for JSD-MBRS model')
-        model = entity.parent
-        java_folder = utils.get_path(self.project_path, cfg.PROJECT_JAVA_FOLDER)
-        java_app_file_path = utils.find_java_app_file(java_folder)
-        java_app_folder_path = java_app_file_path.parent
-        package_tree = utils.get_import_package_tree(java_app_folder_path, cfg.PROJECT_JAVA_FOLDER)
-        logging.debug(f'Package tree for JSD-MBRS model: "{package_tree}"')
-        model.package_tree = package_tree
-
     def set_entity_id_property_value(entity):
         """
         Set the primary key property value for the entity.

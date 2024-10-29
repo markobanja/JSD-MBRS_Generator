@@ -110,11 +110,13 @@ JAVA_CONTROLLER_TEMPLATE_FILE = 'java_controller.template'
 JAVA_SERVICE_TEMPLATE_FILE = 'java_service.template'
 JAVA_REPOSITORY_TEMPLATE_FILE = 'java_repository.template'
 JAVA_REPOSITORY_CONFIGURATION_TEMPLATE_FILE = 'java_repository_configuration.template'
+JAVA_APPLICATION_TEMPLATE_FILE = 'java_application.template'
 JAVA_CLASS_FILE_NAME = '%s.java'
 JAVA_CONTROLLER_FILE_NAME = '%sController.java'
 JAVA_SERVICE_FILE_NAME = '%sService.java'
 JAVA_REPOSITORY_FILE_NAME = '%sRepository.java'
 JAVA_REPOSITORY_CONFIGURATION_FILE_NAME = 'RepositoryConfiguration.java'
+JAVA_APPLICATION_FILE_NAME = '%sApplication.java'
 # Other
 OK = 'OK'
 WARNING = 'WARNING'
@@ -224,6 +226,7 @@ RULE_DEFINED_SIGNS_REGEX = r'[:;=\{\}\[\]\(\),]'
 CLASS_NAME_REGEX = r'class\s+(\w+)\s*\{'
 PROPERTY_VALUE_REGEX = r'=(.*?);'
 COMMENT_REGEX = r'//(.*)'
+OPEN_API_DEFINITION_REGEX = r'@OpenAPIDefinition'
 
 # JINJA MAPPINGS
 VOWELS = ['a', 'e', 'i', 'o', 'u']
