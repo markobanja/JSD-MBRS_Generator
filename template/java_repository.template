@@ -1,0 +1,9 @@
+{{ 'package ' + model.package_tree + '.' + entity.name + ';' }}
+
+{# Imports #}
+{{ 'import org.springframework.data.jpa.repository.JpaRepository;' }}
+{{ 'import org.springframework.stereotype.Repository;' }}
+{# // Imports #}
+
+{{ '@Repository' }}
+{{ 'public interface ' + entity.name + 'Repository extends JpaRepository<' + entity.name + ', Long> {}' }}
