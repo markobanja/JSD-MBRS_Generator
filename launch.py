@@ -18,7 +18,7 @@ def launch():
     except Exception as e:
         logging.error(f'An unexpected error occurred: {e}')
         raise
-        
+
 
 if __name__ == '__main__':
     setup_logging()

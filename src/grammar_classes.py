@@ -107,7 +107,7 @@ def get_type_builtins():
 
         cfg.BYTE: PrimitiveDataType(cfg.BYTE, '0'),
         cfg.SHORT: PrimitiveDataType(cfg.SHORT, '0'),
-        cfg.CHAR: PrimitiveDataType(cfg.CHAR, "'\u0000'"),
+        cfg.CHAR: PrimitiveDataType(cfg.CHAR, "'c'"),
         cfg.INT: PrimitiveDataType(cfg.INT, '0'),
         cfg.FLOAT: PrimitiveDataType(cfg.FLOAT, '0.0F'),
         cfg.LONG: PrimitiveDataType(cfg.LONG, '0L'),
@@ -116,7 +116,7 @@ def get_type_builtins():
 
         cfg.BYTE_W: WrapperDataType(cfg.BYTE_W, '0'),
         cfg.SHORT_W: WrapperDataType(cfg.SHORT_W, '0'),
-        cfg.CHARACTER_W: WrapperDataType(cfg.CHARACTER_W, "'\u0000'"),
+        cfg.CHARACTER_W: WrapperDataType(cfg.CHARACTER_W, "'c'"),
         cfg.INTEGER_W: WrapperDataType(cfg.INTEGER_W, '0'),
         cfg.FLOAT_W: WrapperDataType(cfg.FLOAT_W, '0.0F'),
         cfg.LONG_W: WrapperDataType(cfg.LONG_W, '0L'),

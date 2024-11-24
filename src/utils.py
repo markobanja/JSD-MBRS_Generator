@@ -1,3 +1,5 @@
+import glob
+import json
 import logging
 import re
 import string
@@ -5,8 +7,6 @@ from datetime import datetime
 from os import getcwd, listdir, makedirs
 from os.path import basename, commonpath, exists, isdir, join
 from pathlib import Path
-import glob
-import json
 
 import src.config as cfg
 
@@ -98,7 +98,7 @@ def find_specific_file_regex(folder_path, regex):
     """
     Finds files in the given folder that match the given regular expression pattern, and returns them sorted in descending order.
     """
-    result_files = []
+    result_files = list()
     compiled_regex = re.compile(regex)
     logging.debug(f'Searching for file matching regex "{regex}" in folder "{folder_path}"')
     files = listdir(folder_path)
@@ -238,6 +238,16 @@ def convert_string_to_list(text_value):
     logging.debug(f'Converting string to list: "{text_value}"')
     return json.loads(text_value)
 
+def check_words_in_string(first_string, second_string):
+    """
+    Checks if all the words in the first string are present in the second string.
+    """
+    logging.debug(f'Checking if all words in "{first_string}" are present in "{second_string}"')
+    first_words = first_string.split()
+    all_present = all(word in second_string for word in first_words)
+    logging.debug(f'All words in "{first_string}" are present in "{second_string}": {all_present}')
+    return all_present
+
 def add_punctuation(text, punctuation='!'):
     """
     Adds punctuation to the end of a text string after removing any existing punctuation.
@@ -253,22 +263,21 @@ def add_punctuation(text, punctuation='!'):
     logging.debug(f'Added punctuation: "{punctuation}" to text: "{text}"')
     return text
 
-def pluralize_word(word, lowercase=False):
+def pluralize_word(word):
     """
     Pluralize a singular English word based on common rules.
     Rules:
     - If the word ends with 's', 'x', 'z', or a consonant followed by 'h', add 'es'.
-    - If the word ends with 'y' preceded by a vowel, replace 'y' with 'ies'.
+    - If the word ends with 'y' preceded by a consonant, replace 'y' with 'ies'.
     - For other cases, add 's' to the word.
     """
     plural = None
-    if re.search('[sxz]$', word) or re.search('[^aeioudgkprt]h$', word):
+    if re.search('[sxz]$', word) or re.search('[^aeiou]h$', word):
         plural = re.sub('$', 'es', word)
-    elif re.search('[aeiou]y$', word):
+    elif re.search('[^aeiou]y$', word):
         plural = re.sub('y$', 'ies', word)
     else:
         plural = f'{word}s'
-    plural = plural.lower() if lowercase else plural.capitalize()
     logging.debug(f"Pluralized '{word}' to '{plural}'")
     return plural
 
@@ -302,14 +311,39 @@ def get_unknown_object_name(error):
     Extracts the unknown object name from the error message.
     """
     try:
-        logging.debug(f'Parsing Unknown object error message: "{error.message}"')
+        logging.debug(f'Parsing "Unknown object" error message: "{error.message}"')
         pattern = cfg.UNKNOWN_OBJECT_ERROR_MESSAGE_REGEX
         unknown_object, class_name = re.match(pattern, error.message, re.DOTALL).group(1, 2)
         logging.debug(f'Parsed Unknown object: "{unknown_object}", class name: "{class_name}"')
         return unknown_object
     except Exception as e:
-        logging.debug(f'Failed to parse Unknown object error message: "{e}"')
+        logging.debug(f'Failed to parse "Unknown object" error message: "{e}"')
         return error.message
+    
+def get_is_not_unique_name(error):
+    """
+    Extracts the property name from the 'is not unique' error message.
+    """
+    try:
+        logging.debug(f'Parsing "is not unique" error message: "{error.message}"')
+        pattern = cfg.IS_NOT_UNIQUE_ERROR_MESSAGE_REGEX
+        is_not_unique = re.match(pattern, error.message, re.DOTALL).group(1)
+        logging.debug(f'Parsed is not unique: "{is_not_unique}"')
+        return is_not_unique
+    except Exception as e:
+        logging.debug(f'Failed to parse "is not unique" error message: "{e}"')
+
+def extract_jinja_subprocess_output(output):
+    """
+    Extracts the content from the jinja subprocess output.
+    """
+    logging.debug(f'Extracting content from jinja subprocess output: "{output}"')
+    matches = re.findall(cfg.JINJA_SUBPROCESS_ERROR_REGEX, output)
+    if matches:
+        first_line = matches[0]
+        additional_errors_count = len(matches) - 1
+        return f'{first_line}, and {additional_errors_count} more error(s) found.' if additional_errors_count > 0 else first_line
+    return None
     
 def extract_between_quotes(text):
     """

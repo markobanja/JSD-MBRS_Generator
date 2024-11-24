@@ -68,7 +68,7 @@ class Jinja:
         self.set_project_path(self, project_path)
         self.set_java_app_folder_path(self)
 
-        # Add database dependency and render template for application.properties file
+        # Add database dependency 
         if model.add_database_dependency:
             self.add_database_dependency(self, model)
 
@@ -82,6 +82,12 @@ class Jinja:
         # Render template for Application
         if utils.check_app_file_content(self.java_app_file_path):
             self.render_template(self, model, entity, self.java_app_folder_path, cfg.JAVA_APPLICATION_TEMPLATE_FILE, cfg.JAVA_APPLICATION_FILE_NAME)
+        
+        # Render template for application.properties file
+        resources_path = utils.get_path(self.project_path, cfg.PROJECT_RESOURCES_FOLDER)
+        utils.folder_exists(resources_path)
+        self.render_template(self, model, None, resources_path, cfg.APPLICATION_PROPERTIES_TEMPLATE_FILE, cfg.APPLICATION_PROPERTIES_FILE_NAME)
+
         logging.info('Jinja templates executed successfully')
 
     def create_jinja_environment(template_folder):
@@ -107,9 +113,7 @@ class Jinja:
         project_name = utils.get_base_name(self.project_path)
         build_tool_dependency = BuildToolDependency(project_name, self.project_path, model.build_tool, model.database)
         build_tool_dependency.add_driver_dependency()
-        resources_path = utils.get_path(self.project_path, cfg.PROJECT_RESOURCES_FOLDER)
-        utils.folder_exists(resources_path)
-        self.render_template(self, model, None, resources_path, cfg.APPLICATION_PROPERTIES_TEMPLATE_FILE, cfg.APPLICATION_PROPERTIES_FILE_NAME)
+        logging.info('Database dependency added successfully')
 
     def execute_templates(self, model, entity):
         """
@@ -148,7 +152,7 @@ class Jinja:
         """
         java_file_name = file_name
         if 'Application' in file_name:
-            java_file_name = file_name % entity.parent.build_tool
+            java_file_name = file_name % str(entity.parent.build_tool).replace('-', '')
         elif '%s' in file_name:
             java_file_name = file_name % entity.name
             folder_path = utils.get_path(folder_path, entity.name)
@@ -160,7 +164,7 @@ class Jinja:
         Format the Java file using Google Java Format.
         """
         try:
-            logging.debug(f'Formatting file "{file_path}" using Google Java Format')
+            logging.debug(f'Formatting file "{file_path.name}" using Google Java Format')
             utils.folder_exists(cfg.RESOURCES_FOLDER)
 
             # Find the Google Java Format jar file in the resources folder
@@ -177,7 +181,7 @@ class Jinja:
             subprocess.run(command, shell=True, check=True, cwd=folder_path, capture_output=True, text=True)
         except subprocess.CalledProcessError as e:
             error_message = str(e.stderr).replace('\n', '. ').rstrip('. ')
-            logging.error(f'Failed to format file "{file_path}" using Google Java Format: {error_message}')
+            logging.error(f'Failed to format file "{file_path.name}" using Google Java Format: {error_message}')
             raise
         except Exception as e:
             raise
@@ -200,17 +204,23 @@ class JinjaFilters:
             'driver': self.driver,
             'generated_objects_names': self.generated_objects_names,
             'get_default_value': self.get_default_value,
+            'is_transient': self.is_transient,
             'java_type': self.java_type,
-            'url': self.url,
             'lowercase': self.lowercase,
+            'lowercase_first': self.lowercase_first,
             'map_list_type': self.map_list_type,
             'map_relationship_type': self.map_relationship_type,
+            'mapped_by': self.mapped_by,
             'method_default_value': self.method_default_value,
             'method_type': self.method_type,
+            'plural': self.plural,
             'plural_capitalize': self.plural_capitalize,
             'plural_lowercase': self.plural_lowercase,
             'repository_configuration_value': self.repository_configuration_value,
+            'toString': self.toString,
+            'uppercase': self.uppercase,
             'uppercase_first': self.uppercase_first,
+            'url': self.url,
         }
         self.jinja_env.filters.update(filters)
 
@@ -221,19 +231,33 @@ class JinjaFilters:
         logging.debug(f'Converting "{word}" to lowercase')
         return str(word).lower()
     
+    def plural(self, word):
+        """
+        Pluralize the given word.
+        """
+        logging.debug(f'Pluralize "{word}"')
+        return utils.pluralize_word(word)
+    
     def plural_lowercase(self, word):
         """
         Pluralize the given word and convert it to lowercase.
         """
         logging.debug(f'Pluralize "{word}" and convert it to lowercase')
-        return utils.pluralize_word(word, lowercase=True)
+        return utils.pluralize_word(word).lower()
     
     def plural_capitalize(self, word):
         """
         Pluralize the given word and capitalize it.
         """
         logging.debug(f'Pluralize "{word}" and capitalize it')
-        return utils.pluralize_word(word)
+        return utils.pluralize_word(word).capitalize()
+    
+    def uppercase(self, word):
+        """
+        Convert the given word to uppercase.
+        """
+        logging.debug(f'Converting "{word}" to uppercase')
+        return str(word).upper()
     
     def uppercase_first(self, word):
         """
@@ -241,6 +265,13 @@ class JinjaFilters:
         """
         logging.debug(f'Capitalizing first letter of "{word}" leaving the rest')
         return f'{str(word[0]).upper()}{word[1:]}'
+    
+    def lowercase_first(self, word):
+        """
+        Convert the first character of the given word to lowercase.
+        """
+        logging.debug(f'Converting first character of "{word}" to lowercase')
+        return f'{str(word[0]).lower()}{word[1:]}'
     
     def url(self, database_name):
         """
@@ -269,6 +300,13 @@ class JinjaFilters:
         logging.debug(f'Dialect: {dialect}')
         return dialect
     
+    def is_transient(self, list_type):
+        """
+        Check if the given list type is transient. Only HashMap and HashSet are transient.
+        """
+        logging.debug(f'Checking if list type "{list_type}" is transient')
+        return list_type in {cfg.LIST_TYPE_MAPPING[cfg.HASHMAP], cfg.LIST_TYPE_MAPPING[cfg.TREEMAP]}
+    
     def default_constructor_properties(self, constructors):
         """
         Get the default constructor properties.
@@ -277,7 +315,7 @@ class JinjaFilters:
         for constructor in constructors:
             if not constructor.default_constructor:
                 continue
-            constructor_properties = []
+            constructor_properties = list()
             for property in constructor.property_list:
                 if not property.constant and property.property_type.__class__.__name__ != 'IDType':
                     constructor_properties.append(property)
@@ -289,6 +327,13 @@ class JinjaFilters:
         """
         logging.debug(f'Getting generated objects names')
         return ', '.join([f'{entity_name}_{i}' for i in range(1, 4)])
+    
+    def toString(self, property):
+        """
+        Return the string representation of the given word.
+        """
+        logging.debug(f'Returning string representation of "{property.name}"')
+        return str(property.name) if not property.constant else str(property.name).upper()
     
     def repository_configuration_value(self, property):
         """
@@ -312,8 +357,8 @@ class JinjaFilters:
         """
         Return the description of the given word.
         """
-        prefix = 'An' if word[0] in cfg.VOWELS else 'A'
-        description = f'{prefix} {word} entity'
+        prefix = 'an' if str(word[0]).lower() in cfg.VOWELS else 'a'
+        description = f'Defines {prefix} {word} entity with essential attributes and functionalities.'
         logging.debug(f'Returning description "{description}"')
         return description
     
@@ -454,6 +499,20 @@ class JinjaFilters:
         logging.debug(f'Mapping relationship type "{relationship_type}" to "{mapped_relationship_type}"')
         return mapped_relationship_type
     
+    def mapped_by(self, property):
+        """
+        Return the mapped-by property for a given property.
+        """
+        logging.debug(f'Getting mapped-by property for property "{property.name}"')
+        current_entity = property.parent
+        model = current_entity.parent
+        for entity in model.entities:
+            if entity.name != property.property_type.name:
+                continue
+            for relationship in entity.relationships:
+                if relationship.property_type.name == current_entity.name:
+                    return relationship.name
+
     def get_default_value(self, property):
         """
         Return the default value for a given property.
@@ -474,7 +533,7 @@ class JinjaFilters:
 
         if list_type_class == 'ListType':
             default_value = str(list_type.default_value)
-            return default_value if list_type.type == 'list' else default_value.format(property_type.type)
+            return default_value if list_type.type == 'list' else default_value.format(str(property_type.type).capitalize())
 
         return property_type.default_value
 
@@ -482,7 +541,7 @@ class JinjaFilters:
         """
         Return a list of properties that are eligible for inclusion in a constructor.
         """
-        constructor_properties = []
+        constructor_properties = list()
         for property in property_list:
             property_type_obj = property.property_type
             property_type_class = property_type_obj.__class__.__name__

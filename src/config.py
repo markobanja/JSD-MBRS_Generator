@@ -1,6 +1,7 @@
 # GUI
 THEME_STYLE = 'plastik'
 FONT = 'Courier New'
+CODE_FONT = 'Cascadia Code'
 COLORS = {
     # GUI colors
     'initial_background': (240, 240, 240),
@@ -47,7 +48,7 @@ SAVE_WINDOW_WIDTH = 250
 SAVE_WINDOW_HEIGHT = 150
 # Predefined words
 RULE_DEFINED_WORDS = ['Database', 'class', 'Constructors', 'Methods', 'toString']
-GRAMMAR_DEFINED_WORDS = ['driver', 'database name', 'username', 'password', 'public', 'abstract', 'final', 'private', 'protected', 'empty', 'default', 'static', 'id', 'identifier', 'uniqueId', 'key', 'primaryKey', 'yes', 'no', '1-1', '1-n', 'n-1', 'n-n']
+GRAMMAR_DEFINED_WORDS = ['DB driver', 'DB name', 'DB username', 'DB password', 'public', 'abstract', 'final', 'private', 'protected', 'empty', 'default', 'static', 'id', 'identifier', 'uniqueId', 'key', 'primaryKey', 'yes', 'no', '1..1', '1..*', '*..1', '*..*', '+']
 TYPE_DEFINED_WORDS = ['byte', 'short', 'char', 'int', 'float', 'long', 'double', 'boolean', 'str', 'string', 'String', 'date', 'time', 'datetime']
 WRAPPER_TYPE_DEFINED_WORDS = ['Byte', 'Short', 'Character', 'Integer', 'Float', 'Long', 'Double', 'Boolean']
 KEYWORD_DEFINED_WORDS = ['constant', 'const', 'array', 'linked', 'hashmap', 'hashset', 'treemap', 'list',  'void', 'postgresql', 'mysql', 'sqlserver', 'oracle']
@@ -137,6 +138,14 @@ BUILD_TOOL_PATTER_REGEX = {
     GRADLE_GROOVY: GRADLE_REGEX,
     GRADLE_KOTLIN: GRADLE_REGEX,
 }
+# Spring Boot run commands
+CMD_RUN_GENERATED_PROJECT_WINDOW_NAME = 'Run generated JSD-MBR project'
+SWAGGER_UI_URL = 'http://localhost:8080/swagger-ui/index.html'
+RUN_COMMAND_MAPPING = {
+    'Gradle-Groovy': 'gradlew bootRun',
+    'Gradle-Kotlin': 'gradlew bootRun',
+    'Maven': 'mvnw spring-boot:run',
+}
 
 # TEXTX GRAMMAR
 # Folders
@@ -178,6 +187,12 @@ PNG_FILE_EXTENSION = '.png'
 JSD_MBRS_GENERATOR_EXTENSION = '.jsdmbrs'
 METAMODEL_NAME = 'metamodel'
 MODEL_NAME = f'model{DOT_FILE_EXTENSION}'
+VALID_RELATIONSHIP_TYPE_MAPPING = {
+    '1..1': '1..1',
+    '*..*': '*..*',
+    '1..*': '*..1',
+    '*..1': '1..*'
+}
 
 # TEXTX PROPERTY TYPES
 # IDTypes
@@ -230,19 +245,24 @@ CLASS_NAME_ERROR = 'Class name "%s" is not a valid Java class name! %s'
 UNIQUE_PROPERTY_NAMES_ERROR = 'Property name "%s" already exists in the "%s" class! Each property name must be unique within a class.'
 NO_ID_PROPERTY_ERROR  = 'There is no ID property in the "%s" class! An ID property is required.'
 MULTIPLE_ID_PROPERTIES_ERROR = '"%s" class has more than one ID property (%s)! Only one ID property is allowed.'
-EMPTY_CONSTRUCTOR_ERROR = 'There is no empty constructor in the "%s" class! An empty constructor is required.'
+ENTITY_RELATIONSHIP_PROPERTY_ERROR = 'Class "%s" is missing a bidirectional relationship with the "%s" class. Both classes must have reciprocal relationships defined.'
+ENTITY_RELATIONSHIP_OWNER_ERROR = 'The relationship between classes "%s" and "%s" is not properly defined. Ensure that each class correctly specifies its owner and non-owner side for the relationship.'
+ENTITY_RELATIONSHIP_TYPE_ERROR = 'The relationship between classes "%s" (%s) and "%s" (%s) is not properly defined. Ensure that each class correctly specifies its relationship type for the relationship.'
+EMPTY_CONSTRUCTOR_ERROR = 'There is no empty constructor in the "%s" class! An empty and default constructors are required.'
+DEFAULT_CONSTRUCTOR_ERROR = 'There is no default constructor in the "%s" class! An empty and default constructors are required.'
+CONSTRUCTOR_PROPERTY_ERROR = 'The "%s" property does not exist in the "%s" class! Only properties defined in the current class can be used in the constructor.'
 UNIQUE_CONSTRUCTORS_ERROR = 'The specific constructor "%s" already exists in the "%s" class! Each constructor must be unique within a class.'
 UNIQUE_METHODS_ERROR = 'The method "%s"%s already exists in the "%s" class! Each method within a class must be unique, defined by both method name and property types.'
 PROPERTY_NAME_ERROR = 'Property name "%s" is not a valid Java variable name! %s'
+ID_PROPERTY_NAME_ERROR = '"%s" is defined keyword so it cannot be used as a property name! %s'
 ID_PROPERTY_VALUE_ERROR = 'The "%s" property of type "%s" should not have a "const" or "constant" keyword specified and/or value defined! Constant values are not allowed for ID properties.'
 ID_PROPERTY_GETTER_ENCAPSULATION_ERROR = 'The "%s" property of type "%s" requires a getter method to be defined! Getter methods are mandatory for ID properties.'
 ID_PROPERTY_SETTER_ENCAPSULATION_ERROR = 'The "%s" property of type "%s" should not have a setter method defined! Setter methods are not allowed for ID properties.'
 ENTITY_PROPERTY_CONSTANT_ERROR = 'The "%s" property of the "%s" class type cannot be declared as a constant! Constant properties cannot have the type "%s".'
 ENTITY_PROPERTY_VALUE_ERROR = 'The "%s" property of the "%s" class type cannot have a defined value. Only constant properties can have a defined value.'
-ENTITY_PROPERTY_RELATIONSHIP_ERROR = 'The "%s" property of the "%s" class type must have a relationship! Supported relationships are "1-1" (one-to-one), "1-n" (one-to-many), "n-1" (many-to-one), and "n-n" (many-to-many).'
-ENTITY_PROPERTY_LIST_RELATIONSHIP_ERROR = 'The "%s" list property of the "%s" class type does not support the "%s" relationship! "%s" properties support "1-n" (one-to-many), "n-1" (many-to-one), and "n-n" (many-to-many) relationships.'
-ENTITY_PROPERTY_NON_LIST_RELATIONSHIP_ERROR = 'The "%s" property of the "%s" class type does not support the "%s" relationship! "%s" properties support only "1-1" (one-to-one) relationship.'
-PROPERTY_RELATIONSHIP_ERROR = 'The "%s" property cannot have a relationship since it is not of a appropriate type! Only lists and classes support relationships.'
+ENTITY_PROPERTY_RELATIONSHIP_ERROR = 'The "%s" property of the "%s" class type must have a relationship! Supported relationships are "1..1" (one-to-one), "1..*" (one-to-many), "*..1" (many-to-one), and "*..*" (many-to-many).'
+PROPERTY_RELATIONSHIP_ERROR = 'The "%s" property cannot have a relationship since it is not of a appropriate type! Relationships are only supported by types such as lists and classes.'
+LIST_TYPE_AND_RELATIONSHIP_ERROR = 'The "%s" list property does not support the relationships! Relationships are designed to establish relationships between classes, not for basic data types or collections of basic data types.'
 PROPERTY_TYPE_AND_LIST_TYPE_ERROR = 'The "%s" property cannot have both a "%s" property type and "%s" list type simultaneously. Only reference types (objects) such as "Byte", "Short", "Character", "Integer", "Float", "Long", "Double", "Boolean", or "String" can be used.'
 CONSTANT_AND_VALUE_ERROR = 'If "const" or "constant" keyword is specified, constant value is mandatory, and vice versa! In this case, %s is missing for "%s".'
 CONSTANT_AND_ENCAPSULATION_ERROR = 'Constant property "%s" cannot have setter method! Constant properties can only have getter methods.'
@@ -252,6 +272,8 @@ CONSTRUCTOR_UNIQUE_PROPERTIES_ERROR = 'The specified constructor includes the pr
 CONSTRUCTOR_CONSTANT_PROPERTY_ERROR = 'The specified constructor includes the property "%s", which is defined as a constant! Constructors cannot include properties that are constants.'
 METHOD_NAME_ERROR = 'Method name "%s" is not a valid Java method name! %s'
 METHOD_TYPE_IN_LIST_TYPE_ERROR = 'The method type "%s" is not valid for the list type "%s"! Only wrapper types such as "Byte", "Short", "Character", "Integer", "Float", "Long", "Double", "Boolean", or "String" can be used for list methods.'
+UNKNOWN_OBJECT_ERROR = '%s! Please ensure that "%s" is a valid grammar object or check for any typos.'
+IS_NOT_UNIQUE_ERROR = 'Please ensure that the "%s" property is unique across all classes. Unfortunately, the JSD-MBRS Generator currently supports only unique properties across all classes.'
 # Additional Java explanation messages
 JAVA_CLASS_NAME_ERROR = 'To create a valid Java class name, start with an uppercase letter, followed by letters, digit, dollar signs, or underscores. No spaces or special characters like @, !, # are allowed.'
 JAVA_PROPERTY_AND_METHOD_NAME_ERROR = 'To create a valid Java variable name, start with a letter, dollar sign, or underscore, followed by letters (uppercase or lowercase), digits, dollar signs, or underscores. No spaces or special characters like @, !, # are allowed.'
@@ -273,6 +295,8 @@ SQL_DATABASE_USERNAME_REGEX = r'^[a-zA-Z][a-zA-Z0-9_\-]*$'
 SQL_DATABASE_PASSWORD_REGEX = r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)[A-Za-z\d]{8,}$'
 SYNTAX_ERROR_MESSAGE_REGEX = r'(.*?)at position.*?=>(.*)'
 UNKNOWN_OBJECT_ERROR_MESSAGE_REGEX = r'Unknown object "(.*?)" of class "(.*?)"'
+IS_NOT_UNIQUE_ERROR_MESSAGE_REGEX = r'name (.+?) is not unique\.'
+JINJA_SUBPROCESS_ERROR_REGEX = r'src\\main\\java.*'
 QUOTE_REGEX = r"'(.*?)'"
 RULE_DEFINED_SIGNS_REGEX = r'[:;=\{\}\[\]\(\),]'
 CLASS_NAME_REGEX = r'class\s+(\w+)\s*\{'
@@ -319,17 +343,17 @@ METHOD_LIST_DEFAULT_VALUE_MAPPING = {
 }
 REPOSITORY_CONFIGURATION_LIST_TYPE_MAPPING = {
     LIST: 'new {}[] {{}}',
-    ARRAY: 'new ArrayList<{}>() {{}}',
-    LINKED: 'new LinkedList<{}>() {{}}',
-    HASHMAP: 'new HashMap<String, {}>() {{}}',
-    HASHSET: 'new HashSet<{}>() {{}}',
-    TREEMAP: 'new TreeMap<String, {}>() {{}}',
+    ARRAY: 'new ArrayList<{}>()',
+    LINKED: 'new LinkedList<{}>()',
+    HASHMAP: 'new HashMap<String, {}>()',
+    HASHSET: 'new HashSet<{}>()',
+    TREEMAP: 'new TreeMap<String, {}>()',
 }
 RELATIONSHIP_TYPE_MAPPING = {
-    '1-1': '@OneToOne',
-    '1-n': '@OneToMany',
-    'n-1': '@ManyToOne',
-    'n-n': '@ManyToMany',
+    '1..1': '@OneToOne',
+    '1..*': '@OneToMany',
+    '*..1': '@ManyToOne',
+    '*..*': '@ManyToMany',
 }
 
 # CUSTOM ERROR MESSAGES PER PROPERTY TYPE
