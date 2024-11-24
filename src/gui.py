@@ -1012,7 +1012,7 @@ class HelpWindowGUI(tk.Toplevel):
         """
         logging.info('Creating HelpWindowGUI instance')
         self.parent = parent
-        self.help_text = self.read_help_file()
+        self.soap_response = self.parse_html_content()
         self.init_window()
 
     def init_window(self):
@@ -1042,7 +1042,7 @@ class HelpWindowGUI(tk.Toplevel):
         """
         Initialize the help scrolled text widget.
         """
-        self.help_scrolled_text = scrolledtext.ScrolledText(self.help_window, wrap=tk.WORD, font=self.help_window_font, background=INITIAL_BACKGROUND_COLOR)
+        self.help_scrolled_text = scrolledtext.ScrolledText(self.help_window, wrap=tk.WORD, width=80, font=self.help_window_font, background=INITIAL_BACKGROUND_COLOR)
         self.help_scrolled_text.pack(padx=10, pady=10)
         logging.info('Scrolled text widget initialized')
 
@@ -1064,13 +1064,51 @@ class HelpWindowGUI(tk.Toplevel):
         logging.info(f'Reading "{cfg.HELP_FILE}" file')
         return utils.read_file(utils.get_path(cfg.RESOURCES_FOLDER, cfg.HELP_FILE))
     
+    def parse_html_content(self):
+        """
+        Parses the HTML content of the help file and returns it as a BeautifulSoup object.
+        """
+        logging.info('Parsing HTML content')
+        help_text_content = self.read_help_file()
+        return utils.parse_html_content(help_text_content)
+    
     def update_help_scrolled_text_widget(self):
         """
         Updates the help scrolled text widget with the content of the help file.
         """
-        self.help_scrolled_text.insert('1.0', self.help_text)
+        logging.info('Updating help scrolled text widget')
+        self.help_scrolled_text.config(state=tk.NORMAL)
+        self.help_scrolled_text.delete('1.0', tk.END)
+        self.add_style_to_help_text()
         self.help_scrolled_text.config(state=tk.DISABLED)
-        logging.info(f'Content of "{cfg.HELP_FILE}" file loaded into scrolled text widget')
+        logging.info(f'Content of HTML file loaded into scrolled text widget')
+
+    def add_style_to_help_text(self):
+        """
+        Adds style to the help text widget.
+        """
+        logging.info('Adding style to help text widget')
+        h1_font = utils.set_font(self.help_window_font, 18, True)
+        h2_font = utils.set_font(self.help_window_font, 14, True)
+        h3_font = utils.set_font(self.help_window_font, 11, True)
+        code_font = utils.set_font(cfg.CODE_FONT, 9, True)
+        
+        for tag in self.soap_response.recursiveChildGenerator():
+            if isinstance(tag, str):
+                continue
+            if tag.name == 'nl':
+                self.help_scrolled_text.insert('end', '\n', tag.name)
+            else:
+                self.help_scrolled_text.insert('end', tag.text, tag.name)
+
+        self.help_scrolled_text.tag_configure('h1', font=h1_font, foreground=INFORMATION_COLOR, spacing1=5, justify=tk.CENTER, underline=True)
+        self.help_scrolled_text.tag_configure('h2', font=h2_font, foreground=INFORMATION_COLOR, spacing1=10, spacing3=10, justify=tk.LEFT, underline=True)
+        self.help_scrolled_text.tag_configure('h3', font=h3_font, spacing1=5, spacing3=5, justify=tk.LEFT)
+        self.help_scrolled_text.tag_configure('div', font=self.help_window_font, spacing1=5, justify=tk.LEFT)
+        self.help_scrolled_text.tag_configure('list', font=self.help_window_font, spacing1=5, justify=tk.LEFT)
+        self.help_scrolled_text.tag_configure('nl', font=self.help_window_font, spacing1=5, justify=tk.LEFT)
+        self.help_scrolled_text.tag_configure('code', font=code_font, spacing1=5, justify=tk.LEFT)
+        self.help_scrolled_text.tag_configure('default', font=self.help_window_font, spacing1=5, justify=tk.LEFT)
 
 
 class SaveWindowGUI(tk.Toplevel):

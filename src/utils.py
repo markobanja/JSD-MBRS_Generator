@@ -8,6 +8,8 @@ from os import getcwd, listdir, makedirs
 from os.path import basename, commonpath, exists, isdir, join
 from pathlib import Path
 
+from bs4 import BeautifulSoup
+
 import src.config as cfg
 
 
@@ -84,6 +86,15 @@ def read_file(file_path, encoding='utf-8'):
         content = file.read()
     logging.debug(f'Successfully read "{file_path}" file')
     return content
+
+def parse_html_content(content) -> BeautifulSoup:
+    """
+    Parses the given HTML content and returns a JSON object.
+    """
+    logging.debug('Parsing HTML content')
+    soup = BeautifulSoup(content, 'html.parser')
+    logging.debug('Successfully parsed HTML content')
+    return soup
 
 def write_to_file(file_path, content, encoding='utf-8'):
     """

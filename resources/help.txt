@@ -1,1 +1,96 @@
-This file will be updated with the description about JSD-MBRS Generator documentation and a simple grammar syntax as an example.
+<h1>JSD-MBRS Generator DSL Help Manual</h1>
+<nl>
+<nl>
+<div>Welcome to the JSD-MBRS Generator DSL help manual. This guide provides an overview of the syntax and functionality of our Domain-Specific Language (DSL) designed to facilitate the creation of entities, controllers, services, and repositories for your Java applications. This tool aims to streamline and automate boilerplate code generation, ensuring a consistent and efficient development process.</div>
+<nl>
+<nl>
+<h2>Overview</h2>
+<nl>
+<div>The JSD-MBRS Generator DSL is tailored to define and manage the structure of your database and Java classes. It allows you to specify entities with properties, constants, and relationships, as well as generate constructors and methods. Additionally, the DSL supports the configuration of database connection parameters.</div>
+<nl>
+<nl>
+<h2>Features</h2>
+<nl>
+<h3>Entity Generation</h3><nl>
+<p>Automatically generate Java entity classes with fields, constants, constructors, methods, and relationships.</p>
+<nl>
+<h3>Database Configuration</h3><nl>
+<p>Define database connection settings directly within the DSL.</p>
+<nl>
+<h3>Controller, Service, and Repository Generation</h3><nl>
+<p>Facilitate the creation of standard CRUD operations and additional business logic.</p>
+<nl>
+<h3>Flexibility</h3><nl>
+<p>Support for various data types and collection types, including arrays, lists, hash sets, and maps.</p>
+<nl>
+<h3>Ease of Use</h3><nl>
+<p>Simple and intuitive syntax designed for rapid development.</p>
+<nl>
+<nl>
+<h2>Getting Started</h2>
+<nl>
+<h3>Define Your Database Configuration</h3><nl>
+<p>Start by specifying the database settings required for your application.</p>
+<nl>
+<h3>Create Entity Classes</h3><nl>
+<p>Define your entity classes with their properties, constants, and relationships.</p>
+<nl>
+<h3>Generate Code</h3><nl>
+<p>Use the JSD-MBRS Generator to transform your DSL definitions into fully functional Java code, including controllers, services, and repositories.</p>
+<nl>
+<h3>Integrate and Extend</h3><nl>
+<p>Integrate the generated code into your project, and extend it with custom business logic as needed.</p>
+<nl>
+<nl>
+<h2>Syntax and Components</h2>
+<nl>
+<h3>Database Configuration:</h3>
+<nl>
+<list>   • DB driver: Specify the database driver (e.g., postgresql, mysql).</list><nl>
+<list>   • DB name: Define the name of your database.</list><nl>
+<list>   • DB username: Provide the database username.</list><nl>
+<list>   • DB password: Provide the database password.</list>
+<nl>
+<nl>
+<h3>Entity Definition:</h3>
+<nl>
+<list>   • Parameters: Define the fields of the class with their types.</list><nl>
+<list>   • Constants: Specify immutable values with const keyword.</list><nl>
+<list>   • Relationships: Establish relationships with other entities.</list><nl>
+<list>   • Constructors: List different constructors with specified parameters.</list><nl>
+<list>   • Methods: Define methods with parameters, and return types.</list><nl>
+<list>   • toString: Indicate if a toString method should be generated.</list>
+<nl>
+<nl>
+<h3>Example:</h3><nl>
+<code>public class User {</code><nl>
+<code>    // parameters</code><nl>
+<code>    userId: id (get);</code><nl>
+<code>    username: string (get, set);</code><nl>
+<code>    password: string (get, set);</code><nl>
+<code>    email: string (get, set);</code><nl>
+<code>    // more fields...</code><nl>
+<code></code><nl>
+<code>    // constants</code><nl>
+<code>    default_role: const string = "ROLE_USER";</code><nl>
+<code>    // more constants...</code><nl>
+<code></code><nl>
+<code>    // entity relationships</code><nl>
+<code>    roles: Role hashset *..*(+) (get, set);</code><nl>
+<code>    // more relationships...</code><nl>
+<code></code><nl>
+<code>    Constructors {</code><nl>
+<code>        default,</code><nl>
+<code>        empty,</code><nl>
+<code>        [username, password, email],</code><nl>
+<code>        // more constructors...</code><nl>
+<code>    }</code><nl>
+<code></code><nl>
+<code>    Methods {</code><nl>
+<code>        public void addRole(Role),</code><nl>
+<code>        public boolean hasEmailAddress(email),</code><nl>
+<code>        // more methods...</code><nl>
+<code>    }</code><nl>
+<code></code><nl>
+<code>    toString: yes</code><nl>
+<code>}</code><nl>
