@@ -27,27 +27,29 @@
     {{ '@Bean' }}
     {{ 'CommandLineRunner initData(' }}
     {%- for entity in model.entities -%}
-    {{ entity.name + 'Repository ' + entity.name | lowercase + 'Repository' }}{% if not loop.last %}{{ ', ' }}{% endif %}
+    {{ entity.name + 'Repository ' + entity.name | lowercase_first + 'Repository' }}{% if not loop.last %}{{ ', ' }}{% endif %}
     {%- endfor -%}
     {{ ') {' }}
         {{ 'return args -> {' }}
 
-            {{ '// Create objects' }}
             {% for entity in model.entities %}
+            {{ '// Create ' + entity.name | plural }}
             {% set default_constructor = entity.constructors | default_constructor_properties %}
             {% for i in range(1, 4) %}
-            {{ entity.name + ' ' + entity.name | lowercase + '_' + i | string + ' = new ' + entity.name + '(' }}
+            {{ entity.name + ' ' + entity.name | lowercase_first + '_' + i | string + ' = new ' + entity.name + '(' }}
+                {%- if default_constructor -%}
                 {%- for property in default_constructor -%}
                 {{- property | repository_configuration_value -}}
                 {% if not loop.last %}{{ ', ' }}{% endif %}
                 {%- endfor -%}
+                {%- endif -%}
             {{ ');' }}
             {% endfor %}
             {% endfor %}
 
             {{ '// Save objects to repositories' }}
             {% for entity in model.entities %}
-            {{ entity.name | lowercase + 'Repository.saveAll(List.of(' + entity.name | lowercase | generated_objects_names + '));' }}
+            {{ entity.name | lowercase_first + 'Repository.saveAll(List.of(' + entity.name | lowercase_first | generated_objects_names + '));' }}
             {% endfor %}
 
         {{ '};' }}

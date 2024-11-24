@@ -1,20 +1,21 @@
 Database {
-    driver: postgresql,
-    database name: jsd_mbrs,
-    username: postgres,
-    password: rootPassword1
+    DB driver: postgresql,
+    DB name: jsd_mbrs,
+    DB username: postgres,
+    DB password: rootPassword1
 }
 
 public class Person {
     idPerson: id (getter);
-    testVariable: string list n-1 (get, setter);
-    testSomething: string list n-1 (get, set);
-    firstName: string list n-n (get, setter);
+    testVariable: String list *..1 (get, setter);
+    testTest: string list *..1 (get, set);
+    firstName: str list *..* (get, setter);
     lastName: string (get, set);
-    address: Address 1-1 (get);
+    address: Address 1..1 (get);
+    grade: Grade treemap *..*;
     age: int list (setter);
     weight: float (get, set);
-    height: double list 1-1 (get, set);
+    height: double list 1..1 (get, set);
     bloodType: char (getter);
     isEmployee: boolean (get, set);
     byteConstant: const byte (get) = 127;
@@ -24,28 +25,41 @@ public class Person {
     intConstant: constant int (get) = 0;
     floatConstant: constant float (get) = 00f;
     doubleConstant: constant double (get) = 00D;
-    booleanConstant: constant boolean (get) = TRUE;
+    booleanConstant: constant boolean (get) = TrUe;
     charConstant: constant char (get) = 'c';
     employmentNumber: constant int (get) = 123; // this is a comment
-    school: School list 1-n (get, set);
+    school: School array 1..* (get, set);
     birthday: date (get, set);
-    test: int list 1-n (get, set);
+    test: int list 1..* (get, set);
     timeFormat: time (get, set);
     dateOfEmployment: datetime (get, set);
-    jobArray: const string linked (get) = ["test", "two", "three"];
+    jobArray: const String linked (get) = ["test", "two", "three"];
     positionLinked: const Integer linked (get) = [1, 2, 3];
     charLinked: const Character linked (get) = ['1', '2', '3'];
     jobArrayArray: const string array (get) = ["test", "two", "three"];
     positionLinkedArray: const Integer array (get) = [1, 2, 3];
     charLinkedArray: const Character array (get) = ['1', '2', '3'];
+    asdA: const string hashmap (get) = ["test", "two", "three"];
+    asdB: const Integer hashmap (get) = [1, 2, 3];
+    asdV: const Character hashmap (get) = ['1', '2', '3'];
+    aA: const string hashset (get) = ["test", "two", "three"];
+    aB: const Integer hashset (get) = [1, 2, 3];
+    aV: const Character hashset (get) = ['1', '2', '3'];
+    bA: const string treemap (get) = ["test", "two", "three"];
+    bB: const Integer treemap (get) = [1, 2, 3];
+    bV: const Character treemap (get) = ['1', '2', '3'];
+    cA: const string list (get) = ["test", "two", "three"];
+    cB: const Integer list (get) = [1, 2, 3];
+    cV: const Character list (get) = ['1', '2', '3'];
     testList: const int list (get) = [1, 2, 3];
     byteVariable: Byte hashmap (get, set);
+    testW: Integer hashset (get, set);
     shortVariable: short (get, set);
     longVariable: long (get, set);
     testInteger: Integer;
     testIntegerConstant: constant Integer (getter) = 123; // this is a comment
     testFloat: Float;
-    testa: int list 1-n (get, set);
+    testa: int list 1..* (get, set);
     testDouble: Double;
     testBoolean: Boolean;
     testByte: Byte;
@@ -60,24 +74,36 @@ public class Person {
         [lastName, address, age],
         [age],
         default,
-	[address, lastName]
+	    [address, lastName, school]
     }
     Methods {
-        void methodName (school, jobArray),
-	void methodName (jobArray, school),
-        static void staticMethodName (school, jobArray),
-        int newName (lastName),
-        boolean booleanMethod(),
+	    list(Grade) asdTest(),
+	    public list(Integer) testFunc(),
+        void methodName(school, jobArray),
+	    public int methodName(jobArray),
+        static void staticMethodName(school, jobArray),
+        array(str) newName(lastName),
+        public boolean booleanMethod(),
         string stringMethod(),
         float floatMethod(),
-        double doubleMethod(),
-        char charMethod(),
+        double doubleMethod(charConstant, age),
+        private char charMethod(),
+        final char finalCharMethod(),
         date dateMethod(),
         time timeMethod(),
         datetime datetimeMethod(),
-        byte byteMethod(),
+        protected byte byteMethod(),
         short shortMethod(),
-        long longMethod()
+        long longMethod(),
+        static id test(),
+        public datetime asd(),
+        private Grade testAsd(),
+        Byte testByte(),
+        Boolean testBoolean(),
+        public list(str) mapFunction(),
+        list(Boolean) mapName(),
+        hashmap(Double) doubleMapTest(),
+        private treemap(Boolean) lastTest()
     }
     toString: yes
 }
@@ -89,13 +115,15 @@ public class Address {
     city: string;
     country: string;
     firstName: string (get, set);
-    persons: Person list 1-n (get, set);
+    persons: Person list 1..* (get, set);
 
     Constructors {
         default,
 	empty
     }
-    Methods {}
+    Methods {
+	    protected treemap(Grade) asdTest()
+    }
     toString: no
 }
 
@@ -116,6 +144,19 @@ public class Grade {
     idGrade: id (get);
     street: string (get, set);
     number: int (get, set);
+
+    Constructors {
+        default,
+	empty
+    }
+    Methods {}
+    toString: yes
+}
+
+public class Mark {
+    idGrade: id (getter);
+    street: string;
+    number: int;
 
     Constructors {
         default,

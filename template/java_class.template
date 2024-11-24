@@ -5,27 +5,32 @@
 {{ 'import ' + model.package_tree + '.' + class_entity.name + '.' + class_entity.name + ';' }}
 {% endfor %}
 {{ 'import io.swagger.v3.oas.annotations.media.Schema;' }}
+{{ 'import jakarta.persistence.CascadeType;' }}
 {{ 'import jakarta.persistence.Entity;' }}
-{{ 'import jakarta.persistence.Table;' }}
-{{ 'import jakarta.persistence.Id;' }}
-{{ 'import jakarta.persistence.SequenceGenerator;' }}
+{{ 'import jakarta.persistence.FetchType;' }}
 {{ 'import jakarta.persistence.GeneratedValue;' }}
 {{ 'import jakarta.persistence.GenerationType;' }}
-{{ 'import jakarta.persistence.OneToOne;' }}
-{{ 'import jakarta.persistence.OneToMany;' }}
-{{ 'import jakarta.persistence.ManyToOne;' }}
+{{ 'import jakarta.persistence.Id;' }}
+{{ 'import jakarta.persistence.JoinColumn;' }}
+{{ 'import jakarta.persistence.JoinTable;' }}
 {{ 'import jakarta.persistence.ManyToMany;' }}
+{{ 'import jakarta.persistence.ManyToOne;' }}
+{{ 'import jakarta.persistence.OneToMany;' }}
+{{ 'import jakarta.persistence.OneToOne;' }}
+{{ 'import jakarta.persistence.SequenceGenerator;' }}
+{{ 'import jakarta.persistence.Table;' }}
+{{ 'import jakarta.persistence.Transient;' }}
 {{ 'import java.time.LocalDate;' }}
-{{ 'import java.time.LocalTime;' }}
 {{ 'import java.time.LocalDateTime;' }}
+{{ 'import java.time.LocalTime;' }}
 {{ 'import java.util.ArrayList;' }}
-{{ 'import java.util.LinkedList;' }}
 {{ 'import java.util.HashMap;' }}
 {{ 'import java.util.HashSet;' }}
-{{ 'import java.util.TreeMap;' }}
+{{ 'import java.util.LinkedList;' }}
 {{ 'import java.util.List;' }}
 {{ 'import java.util.Map;' }}
 {{ 'import java.util.Set;' }}
+{{ 'import java.util.TreeMap;' }}
 {{ 'import java.util.UUID;' }}
 {{ 'import org.slf4j.Logger;' }}
 {{ 'import org.slf4j.LoggerFactory;' }}
@@ -33,8 +38,8 @@
 
 {# Class #}
 {{ '@Entity' }}
-{{ '@Table' }}
-{{ '@Schema(name = "' + entity.name + '", description = "' + entity.name | lowercase | description + '")' }}
+{{ '@Table(name = "[' + entity.name | lowercase_first + ']")' }}
+{{ '@Schema(name = "' + entity.name + '", description = "' + entity.name | description + '")' }}
 {{ entity.class_modifier + ' ' if entity.class_modifier else '' }}{{ 'class ' + entity.name + ' {' }}
 
     {# Logger #}
@@ -50,10 +55,14 @@
     {% if property.list_type %}
     {% set property_type_template = property.list_type | map_list_type %}
     {% set property_type = property_type_template.format(property.property_type | java_type) %}
+    {% set transient = property_type_template | is_transient %}
     {% else %}
     {% set property_type = property.property_type | java_type %}
     {% endif %}
-    {{ 'final ' + property_type + ' ' + property.name + ' = ' + property.property_value.value + ';' }}
+    {% if transient %}
+    {{ '@Transient' }}
+    {% endif %}
+    {{ 'public static final ' + property_type + ' ' + property.name | uppercase + ' = ' + property.property_value.value + ';' }}
     {% endfor %}
     {% endif %}
     {# // Constants #}
@@ -61,22 +70,48 @@
     {# Properties #}
 	{{ '// PROPERTIES' }}
 	{% for property in entity.properties if not property.constant %}
-	{% if property.property_type.__class__.__name__ == 'Entity' %}
-	{{ property.relationship | map_relationship_type }}
-	{% endif %}
 	{% if property.list_type %}
     {% set property_type_template = property.list_type | map_list_type %}
     {% set property_type = property_type_template.format(property.property_type | java_type) %}
+    {% set transient = property_type_template | is_transient %}
 	{% else %}
     {% set property_type = property.property_type | java_type %}
     {% endif %}
     {% if property.property_type.__class__.__name__ == 'IDType' %}
+    {% if model.database.driver in ['postgresql', 'oracle'] %}
     {{ '@Id' }}
-	{{ '@SequenceGenerator(name = "' + entity.name | lowercase + '_sequence", sequenceName = "' + entity.name | lowercase + '_sequence", allocationSize = 1)' }}
-	{{ '@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "' + entity.name | lowercase + '_sequence")' }}
-    {{ 'protected ' + property_type + ' ' + property.name + ';' }}
+    {{ '@SequenceGenerator(name = "' + entity.name | lowercase_first + '_sequence", sequenceName = "' + entity.name | lowercase_first + '_sequence", allocationSize = 1)' }}
+    {{ '@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "' + entity.name | lowercase_first + '_sequence")' }}
     {% else %}
-    {{ 'protected ' + property_type + ' ' + property.name + ' = ' + property | get_default_value + ';' }}
+    {{ '@Id' }}
+    {{ '@GeneratedValue(strategy = GenerationType.IDENTITY)' }}
+    {% endif %}
+    {{ '@Schema(description = "The unique identifier for the ' + entity.name + ' class.", accessMode = Schema.AccessMode.READ_ONLY)' }}
+    {{ 'private ' + property_type + ' ' + property.name + ';' }}
+    {% else %}
+    {% if transient %}
+    {{ '@Transient' }}
+    {% endif %}
+    {% if property.property_type.__class__.__name__ == 'Entity' %}
+    {% if property.relationship.owner %}
+    {{ property.relationship.type | map_relationship_type + '(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)' }}
+    {% if property.relationship.type == '*..*' %}
+    {{ '@JoinTable(name = "' + entity.name | lowercase_first + '_' + property.name | lowercase_first + '", joinColumns = @JoinColumn(name = "' + entity.name | lowercase_first + '_id"), inverseJoinColumns = @JoinColumn(name = "' + property.property_type.name | lowercase_first + '_id"))' }}
+    {% else %}
+    {{ '@JoinColumn(name = "' + property.name | lowercase_first + '_id")' }}
+    {% endif %}
+    {{ 'private ' + property_type + ' ' + property.name + ';' }}
+    {% else %}
+    {% if property.relationship.type == '1..1' %}
+    {{ property.relationship.type | map_relationship_type + '(mappedBy = "' + property | mapped_by + '", cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)' }}
+    {% else %}
+    {{ property.relationship.type | map_relationship_type + '(mappedBy = "' + property | mapped_by + '", fetch = FetchType.EAGER)' }}
+    {% endif %}
+    {{ 'private ' + property_type + ' ' + property.name + ' = ' + property | get_default_value + ';' }}
+    {% endif %}
+    {% else %}
+    {{ 'private ' + property_type + ' ' + property.name + ' = ' + property | get_default_value + ';' }}
+    {% endif %}
     {% endif %}
 	{% endfor %}
 	{# // Properties #}
@@ -118,8 +153,10 @@
     {{ '@SuppressWarnings("unused")' }}
     {% endif %}
     {{ method.method_modifier + ' ' if method.method_modifier else ''}}{{'static ' if method.static else '' }}{{ method | method_type + ' ' + method.name + '(' }}
-        {%- for property in method.property_list -%}
-        {%- if property.list_type -%}
+        {%- for property in method.method_properties.property_list -%}
+        {%- if property.__class__.__name__ == 'Entity' -%}
+            {%- set property_type = property.name -%}
+        {%- elif property.list_type -%}
             {%- set property_type_template = property.list_type | map_list_type -%}
             {%- set property_type = property_type_template.format(property.property_type | java_type) -%}
             {%- else -%}
@@ -131,7 +168,7 @@
     {% if method.method_declaration.method_type == 'void' %}
         {{ 'System.out.println("Hello World!");' }}
     {% else %}
-        {{ 'return ' + method | method_default_value  + ';' }}
+        {{ 'return ' + method | method_default_value + ';' }}
     {% endif %}
     {{ '}' }}
     {% if not loop.last %}{{ '\n' }}{% endif %}
@@ -180,7 +217,7 @@
     {{ '// TO STRING' }}
     {{ '@Override' }}
     {{ 'public String toString() {' }}
-        {{ 'return "' + entity.name + ' {' }}{% for property in entity.properties %}{{ property.name + '=" + ' + property.name }}{% if not loop.last %}{{ ' + ", ' }}{% endif %}{% endfor %}{{ ' + "}";' }}
+        {{ 'return "' + entity.name + ' {' }}{% for property in entity.properties %}{{ property | toString + '=" + ' + property | toString }}{% if not loop.last %}{{ ' + ", ' }}{% endif %}{% endfor %}{{ ' + "}";' }}
     {{ '}' }}
     {% endif %}
     {# // toString #}
