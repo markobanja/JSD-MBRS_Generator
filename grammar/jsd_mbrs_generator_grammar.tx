@@ -6,14 +6,14 @@ EntityModel:
 ;
 
 Database:
-    'driver: ' driver=Driver ','
-    'database name:' name=NamePattern
+    'DB driver: ' driver=Driver ','
+    'DB name:' name=NamePattern
     (',' credentials=Credentials)?
 ;
 
 Credentials:
-    'username:' username=NamePattern ','
-    'password:' password=NamePattern
+    'DB username:' username=NamePattern ','
+    'DB password:' password=NamePattern
 ;
 
 Entity:
@@ -46,7 +46,11 @@ Constructor:
 ;
 
 Method:
-    method_modifier=MethodMofidier (static?='static')? method_declaration=MethodDeclaration name=NamePattern '(' (property_list=[Property] (', ' property_list=[Property])*)? ')'
+    method_modifier=MethodMofidier (static?='static')? method_declaration=MethodDeclaration name=NamePattern '(' (method_properties=MethodReferences)? ')'
+;
+
+MethodReferences:
+    property_list=[Property] (', ' property_list=[Property])* | property_list=[Entity] (', ' property_list=[Entity])*
 ;
 
 MethodMofidier:
@@ -134,7 +138,11 @@ Constant:
 ;
 
 Relationship:
-    '1-1' | '1-n' | 'n-1' | 'n-n'
+    type=Relationships owner?='(+)'
+;
+
+Relationships:
+    '1..1' | '1..*' | '*..1' | '*..*'
 ;
 
 Encapsulation:
@@ -166,7 +174,7 @@ Value:
 ;
 
 NamePattern:
-    /[^:(\n]*\b/
+    /[^\s:(\n]*\b/
 ;
 
 ValuePattern:

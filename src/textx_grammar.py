@@ -28,6 +28,20 @@ class Response:
         self.error_class = error_class
 
 
+class ValidationResponse:
+    """
+    Class for creating the response object for the validation check.
+    """
+    def __init__(self, status, message=None, type=None, search_value=None):
+        """
+        Constructor for the ValidationResponse class.
+        """
+        self.status = status
+        self.message = message
+        self.type = type
+        self.search_value = search_value
+
+
 class SemanticError(TextXSemanticError):
     """
     Class representing a semantic error in TextX.
@@ -116,12 +130,20 @@ class TextXGrammar:
             # Determine if the error is due to an unknown object
             if e.err_type == 'Unknown object':
                 e.search_value = utils.get_unknown_object_name(e)
-                unknown_object_error_msg = f'{error_msg}! Please ensure that "{e.search_value}" is a valid grammar object at the specified location or correct any typos.'
-                return Response(status=cfg.ERROR, error=e, error_msg=unknown_object_error_msg, error_class=error_class)
+                error_msg = cfg.UNKNOWN_OBJECT_ERROR % (error_msg, e.search_value)
+                return Response(status=cfg.ERROR, error=e, error_msg=error_msg, error_class=error_class)
+            
+            # Determine if the error is due to an is not unique object
+            if str(e.message).endswith('is not unique.'):
+                property_name = utils.get_is_not_unique_name(e)
+                error_explanation = cfg.IS_NOT_UNIQUE_ERROR % (property_name)
+                error_msg = f'at position ({str(e.line)},{str(e.col)}): {error_explanation}'
+                return Response(status=cfg.ERROR, error=e, error_msg=error_msg, error_class=error_class)
 
             return Response(status=cfg.ERROR, error=e, error_msg=error_msg, error_class=error_class)
         except subprocess.CalledProcessError as e:
-            error_msg = f'{str(e.stderr)}'
+            jinja_error = utils.extract_jinja_subprocess_output(e.stderr)
+            error_msg = f'Error while formatting Jinja template: {jinja_error}'
             logging.error(error_msg)
             return Response(status=cfg.ERROR, error=e, error_msg=error_msg, error_class='CalledProcessError')
         except Exception as e:
@@ -297,16 +319,18 @@ class TextXGrammar:
         """
         Perform semantic checks on the model.
         """
-        logging.info(f'Starting semantic checks for JSD-MBRS Generator "{model.__class__.__name__}"')
-        self.check_unique_class_names(model)
-        logging.info(f'Successfully finished semantic checks for JSD-MBRS Generator "{model.__class__.__name__}"')
-        logging.info(f'Updating variables for class "{model.__class__.__name__}"')
+        class_name = model.__class__.__name__
+        logging.info(f'Setting variables for class "{class_name}"')
         self.set_package_tree(self, model)
         self.set_build_tool(self, model)
         self.set_database_driver_flag(self, model)
         self.set_project_name(self, model)
         self.set_app_file_name(self, model)
-        logging.info(f'Successfully updated variables for class "{model.__class__.__name__}"')
+        logging.info(f'Successfully set variables for class "{class_name}"')
+        logging.info(f'Starting semantic checks for JSD-MBRS Generator "{class_name}"')
+        self.check_unique_class_names(model)
+        self.check_entity_relationships(self, model)
+        logging.info(f'Successfully finished semantic checks for JSD-MBRS Generator "{class_name}"')
 
     def database_processor(self, database):
         """
@@ -323,33 +347,34 @@ class TextXGrammar:
         """
         Perform semantic checks on each class in the model.
         """
-        logging.info(f'Updating variables for entity "{entity.name}"')
-        logging.info(f'Successfully updated variables for entity "{entity.name}"')
+        logging.info(f'Setting variables for class "{entity.name}"')
+        self.set_entity_id_property_value(entity)
+        self.set_entity_relationships(entity)
+        logging.info(f'Successfully set variables for class "{entity.name}"')
         logging.info(f'Starting semantic checks for class "{entity.name}"')
         self.check_class_name(entity)
         self.check_unique_property_names(entity)
         self.check_id_property(entity)
-        self.check_empty_constructor(self, entity)
+        self.check_empty_and_default_constructor(self, entity)
+        self.check_properties_inside_constructors(entity),
         self.check_unique_constructors(self, entity)
         self.check_unique_methods(self, entity)
         logging.info(f'Successfully finished semantic checks for class "{entity.name}"')
-        logging.info(f'Updating variables for class "{entity.name}"')
-        self.set_entity_id_property_value(entity)
-        logging.info(f'Successfully updated variables for class "{entity.name}"')
 
     def property_processor(self, property):
         """
         Perform semantic checks on each property in the model.
         """
-        logging.info(f'Updating variables for property "{property.name}"')
-        self.add_variables_to_property(property)
-        logging.info(f'Successfully updated variables for property "{property.name}"')
+        logging.info(f'Setting variables for property "{property.name}"')
+        self.set_primary_key_flag_to_entity_property(property)
+        logging.info(f'Successfully set variables for property "{property.name}"')
         logging.info(f'Starting semantic checks for property "{property.name}"')
         self.check_property_name(property)
         self.check_id_property_value(property)
         self.check_id_property_encapsulation(property)
         self.check_entity_property(property)
         self.check_property_relationship(property)
+        self.check_list_type_and_relationship(property)
         self.check_property_type_and_list_type(property)
         self.check_constant_and_value(property)
         self.check_constant_and_encapsulation(property)
@@ -379,21 +404,7 @@ class TextXGrammar:
         self.check_method_type_in_list_type(method)
         logging.info(f'Successfully finished semantic checks for method "{method.name}"')
 
-    # MODEL SEMANTIC CHECKS
-    def check_unique_class_names(model):
-        """
-        Check if class names are unique.
-        Raise a SemanticError if a class name is not unique.
-        """
-        class_names = set()
-        for entity in model.entities:
-            if entity.name in class_names:
-                error_message = cfg.UNIQUE_CLASS_NAMES_ERROR % (entity.name)
-                logging.error(error_message)
-                raise SemanticError(error_message, **get_location(entity), search_value=entity.name, err_type='unique_class_names_error')
-            class_names.add(entity.name)
-
-    # MODEL UPDATE FUNCTIONS
+    # MODEL SET FUNCTIONS
     def set_package_tree(self, model):
         """
         Create and add the package tree to the model.
@@ -442,6 +453,73 @@ class TextXGrammar:
         model.app_file_name = java_app_file_path.stem
         logging.debug(f'App file name for JSD-MBRS model: "{java_app_file_path.name}"')
 
+    # CONSTRUCTOR FUNCTIONS
+    def validate_entity_relationships(model, entity, property):
+        """
+        Validate the relationship between an entity and a property in the given model.
+        """
+        def validate_relationship_type(first_type, second_type):
+            """
+            Validate the relationship type between two types.
+            """
+            logging.debug(f'Validating relationship type "{first_type}" and "{second_type}"')
+            is_valid_relationship_type = cfg.VALID_RELATIONSHIP_TYPE_MAPPING[first_type] != second_type
+            return is_valid_relationship_type
+        
+        property_type_name = property.property_type.name
+        relationship_owner = property.relationship.owner
+        relationship_type = property.relationship.type
+
+        matching_entity = next((e for e in model.entities if e.name == property_type_name), None)
+        matching_property = next((p for p in matching_entity.properties if p.property_type.name == entity.name), None)
+        if not matching_property:
+            error_message = cfg.ENTITY_RELATIONSHIP_PROPERTY_ERROR % (property.property_type.name, entity.name)
+            return ValidationResponse(cfg.ERROR, error_message, type=property.property_type, search_value=property_type_name)
+
+        # Check if the relationship owner is correct
+        if matching_property.relationship.owner == relationship_owner:
+            additional_search = {matching_entity.name: f'{matching_property.name}: {matching_property.property_type.name} {matching_property.relationship.type}'}
+            search_value = [property.name, property.property_type.name, property.relationship.type, additional_search]
+            error_message = cfg.ENTITY_RELATIONSHIP_OWNER_ERROR % (entity.name, property.property_type.name)
+            return ValidationResponse(cfg.ERROR, error_message, type=property, search_value=search_value)
+        
+        # Check if the relationship types are valid
+        if validate_relationship_type(matching_property.relationship.type, relationship_type):
+            additional_search = {matching_entity.name: f'{matching_property.name}: {matching_property.property_type.name} {matching_property.relationship.type}'}
+            search_value = [property.name, property.property_type.name, property.relationship.type, additional_search]
+            error_message = cfg.ENTITY_RELATIONSHIP_TYPE_ERROR % (entity.name, matching_property.relationship.type, property.property_type.name, relationship_type)
+            return ValidationResponse(cfg.ERROR, error_message, type=property, search_value=search_value)
+        
+        logging.debug('Entity relationship is valid')
+        return ValidationResponse(cfg.OK)
+
+    # MODEL SEMANTIC CHECKS
+    def check_unique_class_names(model):
+        """
+        Check if class names are unique.
+        Raise a SemanticError if a class name is not unique.
+        """
+        class_names = set()
+        for entity in model.entities:
+            if entity.name in class_names:
+                error_message = cfg.UNIQUE_CLASS_NAMES_ERROR % (entity.name)
+                logging.error(error_message)
+                raise SemanticError(error_message, **get_location(entity), search_value=entity.name, err_type='unique_class_names_error')
+            class_names.add(entity.name)
+
+    def check_entity_relationships(self, model):
+        """
+        Check if the entity relationships are valid.
+        Raise a SemanticError if the entity relationships are invalid.
+        """
+        for entity in model.entities:
+            for property in entity.relationships:
+                response = self.validate_entity_relationships(model, entity, property)
+                if response.status == cfg.ERROR:
+                    error_message = response.message
+                    logging.error(error_message)
+                    raise SemanticError(error_message, **get_location(response.type), search_value=response.search_value, err_type='entity_relationships_error')
+
     # DATABASE SEMANTIC CHECKS
     def check_database_name(database):
         """
@@ -483,7 +561,28 @@ class TextXGrammar:
             error_message = cfg.DATABASE_PASSWORD_ERROR % (str(database.driver).capitalize(), database.credentials.password, cfg.SQL_DATABASE_PASSWORD_ERROR)
             logging.error(error_message)
             raise SemanticError(error_message, **get_location(database), search_value=database.credentials.password, err_type='database_password_error')
+        
+    # CLASS SET FUNCTIONS
+    def set_entity_id_property_value(entity):
+        """
+        Set the primary key property value for the entity.
+        """
+        logging.debug(f'Setting primary key property value for entity "{entity.name}"')
+        for property in entity.properties:
+            if property.property_type.is_primary_key:
+                entity.id_property = property.name
+                break
 
+    def set_entity_relationships(entity):
+        """
+        Set the relationships for the entity.
+        """
+        logging.debug(f'Setting relationships for entity "{entity.name}"')
+        entity_relationships = list()
+        for property in entity.properties:
+            if property.relationship:
+                entity_relationships.append(property)
+        entity.relationships = entity_relationships
 
     # CLASS SEMANTIC CHECKS
     def check_class_name(entity):
@@ -515,7 +614,7 @@ class TextXGrammar:
         Raise a SemanticError if the primary key property is not present or if it is not unique.
         """
         id_type_count = 0
-        id_property_list = []
+        id_property_list = list()
         for property in entity.properties:
             if property.property_type.is_primary_key:
                 id_type_count += 1
@@ -531,19 +630,35 @@ class TextXGrammar:
             logging.error(error_message)
             raise SemanticError(error_message, **get_location(entity), search_value=id_property_list, err_type='multiple_id_property_error')
         
-    def check_empty_constructor(self, entity):
+    def check_empty_and_default_constructor(self, entity):
         """
-        Check if the empty constructor is provided.
-        Raise a SemanticError if the empty constructor is not provided.
+        Check if the empty and default constructors are provided.
+        Raise a SemanticError if the empty and default constructors are not provided.
         """
         empty_constructors = [constructor for constructor in entity.constructors if constructor.empty_constructor]
+        default_constructors = [constructor for constructor in entity.constructors if constructor.default_constructor]
         last_constructor = entity.constructors[-1]
+        last_constructor_name = self.get_constructor_name(last_constructor)
         if len(empty_constructors) == 0:
-            last_constructor = entity.constructors[-1]
-            last_constructor_name = self.get_constructor_name(last_constructor)
             error_message = cfg.EMPTY_CONSTRUCTOR_ERROR % (entity.name)
             logging.error(error_message)
             raise SemanticError(error_message, **get_location(last_constructor), search_value=last_constructor_name, err_type='empty_constructor_error')
+        elif len(default_constructors) == 0:
+            error_message = cfg.DEFAULT_CONSTRUCTOR_ERROR % (entity.name)
+            logging.error(error_message)
+            raise SemanticError(error_message, **get_location(last_constructor), search_value=last_constructor_name, err_type='default_constructor_error')
+        
+    def check_properties_inside_constructors(entity):
+        """
+        Check if the provided constructor properties are part of specific class.
+        Raise a SemanticError if a constructor property is not part of the class.
+        """
+        for constructor in entity.constructors:
+            for property in constructor.property_list:
+                if property not in entity.properties:
+                    error_message = cfg.CONSTRUCTOR_PROPERTY_ERROR % (property.name, entity.name)
+                    logging.error(error_message)
+                    raise SemanticError(error_message, **get_location(constructor), search_value=property.name, err_type='constructor_property_error')
         
     def check_unique_constructors(self, entity):
         """
@@ -566,10 +681,18 @@ class TextXGrammar:
         """
         methods = set()
         for method in entity.methods:
-            method_types_obj = [
-                (property.property_type.type if not property.property_type.__class__.__name__ == 'Entity' else property.property_type.name)
-                for property in method.property_list
-            ]
+            method_types_obj = []
+            if method.method_properties is None:
+                continue
+            for property in method.method_properties.property_list:
+                if property.__class__.__name__ == 'Entity':
+                    type_value = property.name
+                elif not property.property_type.__class__.__name__ == 'Entity':
+                    type_value = property.property_type.type
+                else:
+                    type_value = property.property_type.name
+                method_types_obj.append(type_value)
+
             # Sort properties alphabetically by name for consistent comparison
             method_types_obj.sort(key=lambda x: x[0])
             method_types = ', '.join(type for type in method_types_obj)
@@ -581,20 +704,10 @@ class TextXGrammar:
                 raise SemanticError(error_message, **get_location(method), search_value=method.name, err_type='unique_methods_error')
             methods.add(method_name)
 
-    # CLASS UPDATE FUNCTIONS
-    def set_entity_id_property_value(entity):
+    # PROPERTY SET FUNCTIONS
+    def set_primary_key_flag_to_entity_property(property):
         """
-        Set the primary key property value for the entity.
-        """
-        for property in entity.properties:
-            if property.property_type.is_primary_key:
-                entity.id_property = property.name
-                break
-
-    # PROPERTY FUNCTIONS
-    def add_variables_to_property(property):
-        """
-        Add necessary variables to the property.
+        Set the primary key flag to the entity property.
         """
         property_type_class = property.property_type.__class__.__name__
         if property_type_class == 'Entity':
@@ -608,6 +721,11 @@ class TextXGrammar:
         """
         if not utils.check_value_regex(cfg.JAVA_PROPERTY_AND_METHOD_NAME_REGEX, property.name):
             error_message = cfg.PROPERTY_NAME_ERROR % (property.name, cfg.JAVA_PROPERTY_AND_METHOD_NAME_ERROR)
+            logging.error(error_message)
+            raise SemanticError(error_message, **get_location(property), search_value=property.name, err_type='property_name_error')
+        
+        if str(property.name).lower() == 'id':
+            error_message = cfg.ID_PROPERTY_NAME_ERROR % (property.name, cfg.JAVA_PROPERTY_AND_METHOD_NAME_ERROR)
             logging.error(error_message)
             raise SemanticError(error_message, **get_location(property), search_value=property.name, err_type='property_name_error')
         
@@ -660,16 +778,6 @@ class TextXGrammar:
                 error_message = cfg.ENTITY_PROPERTY_RELATIONSHIP_ERROR % (property.name, property.property_type.name)
                 logging.error(error_message)
                 raise SemanticError(error_message, **get_location(property), search_value=property.name, err_type='entity_property_error')
-            elif property.list_type and property.relationship not in ['1-n', 'n-1', 'n-n']:
-                search_values = [property.name, property.relationship]
-                error_message = cfg.ENTITY_PROPERTY_LIST_RELATIONSHIP_ERROR % (property.name, property.property_type.name, property.relationship, property.list_type.name)
-                logging.error(error_message)
-                raise SemanticError(error_message, **get_location(property), search_value=search_values, err_type='entity_property_error')
-            elif not property.list_type and property.relationship != '1-1':
-                search_values = [property.name, property.relationship]
-                error_message = cfg.ENTITY_PROPERTY_NON_LIST_RELATIONSHIP_ERROR % (property.name, property.property_type.name, property.relationship, property_type_class)
-                logging.error(error_message)
-                raise SemanticError(error_message, **get_location(property), search_value=search_values, err_type='entity_property_error')
     
     def check_property_relationship(property):
         """
@@ -678,14 +786,26 @@ class TextXGrammar:
         """
         property_type_class = property.property_type.__class__.__name__
         if property.relationship and not property.list_type and property_type_class not in ['ListType', 'Entity']:
-            search_values = [property.name, property.relationship]
+            search_values = [property.name, property.relationship.type]
             error_message = cfg.PROPERTY_RELATIONSHIP_ERROR % (property.name)
             logging.error(error_message)
             raise SemanticError(error_message, **get_location(property), search_value=search_values, err_type='property_relationship_error')
         
+    def check_list_type_and_relationship(property):
+        """
+        Check if the list type and property relationship are valid.
+        Raise a SemanticError if the conditions are not met.
+        """
+        property_type_class = property.property_type.__class__.__name__
+        if property.list_type and property.relationship and not property_type_class == 'Entity':
+            search_values = [property.name, property.list_type.type, property.relationship.type]
+            error_message = cfg.LIST_TYPE_AND_RELATIONSHIP_ERROR % (property.name)
+            logging.error(error_message)
+            raise SemanticError(error_message, **get_location(property), search_value=search_values, err_type='list_type_and_relationship_error')
+        
     def check_property_type_and_list_type(property):
         """
-        Check if the property type and list type are .
+        Check if the property type and list type are valid.
         Raise a SemanticError if the conditions are not met.
         """
         property_type_class = property.property_type.__class__.__name__
@@ -765,7 +885,7 @@ class TextXGrammar:
                 logging.error(error_message)
                 raise SemanticError(error_message, **get_location(property), search_value=search_value, err_type='list_value_error')
 
-    # PROPERTY UPDATE FUNCTIONS 
+    # PROPERTY UPDATE FUNCTIONS
     def update_property_value(property):
         """
         Updates the value of a property based on its type.

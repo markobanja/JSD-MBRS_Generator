@@ -1,4 +1,3 @@
-import os
 import logging
 import threading
 
@@ -9,7 +8,8 @@ from ttkthemes import ThemedStyle
 import src.config as cfg
 import src.utils as utils
 from src.build_tool_dependency import BuildToolDependency
-from src.textx_grammar import TextXGrammar as tg
+from src.run_generated_project import RunGeneratedProject
+from src.textx_grammar import TextXGrammar
 
 
 INITIAL_BACKGROUND_COLOR = utils.convert_rgb_to_hex(cfg.COLORS['initial_background'])
@@ -82,6 +82,7 @@ class MainWindowGUI:
         self.busy = False
         self.save_event = threading.Event()  # Event for synchronization
         self.symbol_index = 0
+        self.periodic_update_interval = 3000  # 3 seconds
         self.color_mappings = [
             (cfg.RULE_DEFINED_WORDS, RULE_DEFINED_WORDS_COLOR),
             (cfg.GRAMMAR_DEFINED_WORDS, GRAMMAR_DEFINED_WORDS_COLOR),
@@ -177,14 +178,15 @@ class MainWindowGUI:
         """
         self.text_editor = scrolledtext.ScrolledText(self.window, wrap=tk.WORD, font=self.default_font, height=30, width=80, undo=True, maxundo=-1, cursor='arrow', background=INITIAL_BACKGROUND_COLOR)
         self.text_editor.pack(side=tk.LEFT, padx=5, pady=5, fill=tk.BOTH, expand=False)
+        self.text_editor.after(self.periodic_update_interval, self.periodic_update)
         self.text_editor.bind('<KeyPress>', self.on_scroll)
         self.text_editor.bind('<MouseWheel>', self.on_scroll)
         self.text_editor.bind('<B1-Motion>', self.on_scroll)
         self.text_editor.bind('<KeyRelease>', self.on_type_text)
         self.text_editor.bind('<Control-s>', self.on_save)
         self.text_editor.bind('<Control-v>', self.on_paste)
-        # TODO: add different options while typing (should be a new feature but not for this sprint)
-        # TODO: add remove line 'Control-l'
+        self.text_editor.bind('<Control-l>', self.on_remove_line)
+        self.text_editor.bind('<Tab>', self.on_tab)
         logging.info('Text editor widget initialized')
 
     def init_canvas_circle(self):
@@ -315,17 +317,20 @@ class MainWindowGUI:
                 self.remove_error_color()
                 loading_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["INFO"]} Generating, please wait...'
                 self.update_loading_animation(loading_text)
-                response = tg.generate(self.project_path, self.grammar_file_name, self.database_driver)
+                response = TextXGrammar.generate(self.project_path, self.grammar_file_name, self.database_driver)
                 if response.status is cfg.OK:
+                    self.busy = False
                     self.export_button.config(state=tk.NORMAL)
                     response_color = OK_COLOR
                     response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["OK"]} Successfully executed generate action.'
+                    self.console_output.config(text=response_text, fg=response_color)
+                    self.run_generated_project()
                 else:
                     response_color = ERROR_COLOR
                     self.set_error_color(response)
                     response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(response.error_msg)}'
                     logging.error(f'Error during generate: {response.error_msg}')
-                self.console_output.config(text=response_text, fg=response_color)
+                    self.console_output.config(text=response_text, fg=response_color)
             except Exception as e:
                 error_message = f'Failed to generate metamodel and model: {str(e)}'
                 logging.error(error_message)
@@ -357,7 +362,7 @@ class MainWindowGUI:
                 self.window.update_idletasks()
 
                 # Export the metamodel and model to the project folder
-                response = tg.export()
+                response = TextXGrammar.export()
                 if response.status is cfg.OK:
                     response_color = OK_COLOR
                     response_text = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["OK"]} Successfully exported files to the "{export_folder}" folder.'
@@ -419,7 +424,7 @@ class MainWindowGUI:
         
         self.update_line_numbers(event)
         self.compare_grammar_content()
-        self.set_color_to_text()
+        self.remove_error_color()
     
     def on_mouse_click(self, event=None):
         """
@@ -451,10 +456,26 @@ class MainWindowGUI:
         logging.debug('Paste event detected. Scheduling set color to text')
         self.window.after(1, self.set_color_to_text)
 
+    def on_remove_line(self, event=None):
+        """
+        Method for handling the remove line event.
+        """
+        line_number = self.text_editor.index(tk.INSERT).split('.')[0]
+        next_line_start = f'{int(line_number) + 1}.0'
+        self.text_editor.delete(f'{line_number}.0', next_line_start)
+
+    def on_tab(self, event=None):
+        """
+        Method for handling the tab event.
+        """
+        self.text_editor.insert(tk.INSERT, '    ')
+        return 'break'
+
     def on_window_close(self):
         """
         Method for handling the main window close event.
         """
+        import os
         logging.info('Handling main window close event')
         self.window.destroy()
         self.window.quit()
@@ -554,6 +575,13 @@ class MainWindowGUI:
         self.line_number_text.yview_moveto(yview[0])
         logging.debug('Line number text widget yview synced with text editor yview')
 
+    def periodic_update(self):
+        """
+        Run periodically to update the grammar text inside the text editor.
+        """
+        self.set_color_to_text()
+        self.text_editor.after(self.periodic_update_interval, self.periodic_update)
+
     def save_file_name(self, event):
         """
         Save the content of the text editor to a file with the specified grammar file name.
@@ -613,7 +641,6 @@ class MainWindowGUI:
         Set the color of the words in the text editor.
         """
         logging.debug('Setting color to text')
-        self.remove_error_color()
 
         # Set the default font color first
         self.set_default_font_color(DEFAULT_FONT_COLOR)  
@@ -621,7 +648,7 @@ class MainWindowGUI:
         # Apply color to text based on the color mappings
         for words_list, color in self.color_mappings:
             self.apply_color_to_text(words_list, color)
-        
+
         self.rule_defined_signs_color(RULE_DEFINED_SIGNS_COLOR)
         self.class_name_color(CLASS_NAME_COLOR)
         self.property_value_color(PROPERTY_VALUE_COLOR)
@@ -693,6 +720,11 @@ class MainWindowGUI:
         if response.error_class == 'TextXSyntaxError':
             self.syntax_error_color(response)
         elif response.error_class == 'TextXSemanticError':
+            if not hasattr(response, 'search_value'):
+                self.remove_tags_text_editor(f'{response.error.line}.0', f'{response.error.line}.end')
+                self.text_editor.tag_configure(ERROR_COLOR, foreground=ERROR_COLOR)
+                self.text_editor.tag_add(ERROR_COLOR, f'{response.error.line}.0', f'{response.error.line}.end')
+                return
             self.semantic_error_color(response)
         elif response.error_class == 'SemanticError':
             self.semantic_error_color(response)
@@ -747,19 +779,31 @@ class MainWindowGUI:
         logging.debug(f'Semantic error search value: "{search_value}"')
         if isinstance(search_value, list):
             for value in search_value:
-                self.apply_semantic_error_color(response, value)
+                self.handle_list_semantic_error(response, value)
         else:
             self.apply_semantic_error_color(response, search_value)
         logging.debug('Semantic error color set')
 
-    def apply_semantic_error_color(self, response, search_value):
+    def handle_list_semantic_error(self, response, value):
+        """
+        Handles semantic error if the search value is a list.
+        """
+        logging.debug(f'Handling semantic error for list value: "{value}"')
+        if isinstance(value, dict):
+            for class_name, search_value in value.items():
+                for word in str(search_value).split():
+                    self.apply_semantic_error_color(response, word, class_name)
+        else:
+            self.apply_semantic_error_color(response, value)
+
+    def apply_semantic_error_color(self, response, search_value, class_name=None):
         """
         Apply the semantic error color to the every specified search value in the text editor (check only the line where the error occurred).
         """
-        error_line = self.handle_error_type(response, search_value)
+        error_line = self.handle_error_type(response, search_value, class_name)
         logging.debug(f'Applying semantic error color for {search_value} in line {error_line}')
         line_text = self.text_editor.get(f'{error_line}.0', f'{error_line}.end')
-        if search_value in line_text:
+        if utils.check_words_in_string(search_value, line_text):
             start_index = 0
             while start_index < len(line_text):
                 start_index = line_text.find(search_value, start_index)
@@ -771,35 +815,53 @@ class MainWindowGUI:
                     self.remove_tags_text_editor(f'{error_line}.{start_index}', f'{error_line}.{end_index}')
                     self.text_editor.tag_configure(ERROR_COLOR, foreground=ERROR_COLOR)
                     self.text_editor.tag_add(ERROR_COLOR, f'{error_line}.{start_index}', f'{error_line}.{end_index}')
+                    return  # TODO: check if this is ok, if not remove it
                 start_index = end_index
 
-    def handle_error_type(self, response, search_value):
+    def handle_error_type(self, response, search_value, class_name):
         """
         Handle the error type and return the line where the error occurred.
         """
         error_line = response.error.line
         error_type = response.error.err_type
         logging.debug(f'Handling error type: "{error_type}"')
-        if error_type in ['database_name_error', 'database_username_error', 'database_password_error', 'multiple_id_property_error']:
-            error_line = self.find_line_containing_search_value(response, search_value)
+        if error_type in ['database_name_error', 'database_username_error', 'database_password_error', 'multiple_id_property_error', 'entity_relationships_error']:
+            error_line = self.find_line_containing_search_value(response, search_value, class_name)
         logging.debug(f'Error line updated to: {error_line}')
         return error_line
 
-    def find_line_containing_search_value(self, response, search_value):
+    def find_line_containing_search_value(self, response, search_value, class_name):
         """
         Find the line number containing the specified search value.
         """
+        def find_class(class_name, line_text):
+            """
+            Find the class name in the line text.
+            """
+            logging.debug('Checking class existence in line')
+            if not class_name:
+                return True
+            class_to_check = utils.extract_class_names_regex(line_text)
+            return class_name in class_to_check
+        
+        class_found = False
         line = response.error.line
-        while True:
+        total_lines = int(self.text_editor.index(tk.END).split('.')[0])
+        while line <= total_lines:
             logging.debug(f'Searching for "{search_value}" in line {line}')
             line_text = self.text_editor.get(f'{line}.0', f'{line}.end')
-            if search_value in line_text:
+
+            if not class_found :
+                class_found = find_class(class_name, line_text)
+
+            if utils.check_words_in_string(search_value, line_text) and class_found:
                 logging.debug(f'Found "{search_value}" in line {line}')
                 response.error_msg = response.error_msg.replace(str(response.error.line), str(line))
                 response.error.line = line
                 return line
             line += 1
-
+        return response.error.line
+        
     def remove_tags_text_editor(self, start_index, end_index):
         """
         Remove tags from start until end index in the text editor.
@@ -837,11 +899,19 @@ class MainWindowGUI:
         """
         Check if the selected text is a whole word.
         """
+        def is_valid_java_char(c):
+            """
+            Define valid characters for Java variable names.
+            """
+            return str(c).isalnum() or str(c) in {'$', '_'}
+        
         logging.debug(f'Checking if {start_index} to {end_index} is a whole word')
         before_char = '' if start_index == '1.0' else self.text_editor.get(f'{start_index}-1c')
         after_char = self.text_editor.get(f'{end_index}')
         is_whole_word = not (before_char.isalnum() or after_char.isalnum())
-        logging.debug(f'Result: {is_whole_word}')
+        # Check if the before and after characters are not valid Java variable name characters
+        is_whole_word = not is_valid_java_char(before_char) and not is_valid_java_char(after_char)
+        logging.debug(f'before_char: {before_char}, after_char: {after_char}, Result: {is_whole_word}')
         return is_whole_word
     
     def update_loading_animation(self, loading_text):
@@ -855,6 +925,24 @@ class MainWindowGUI:
         loading_animation = f'{loading_text} {cfg.LOADING_SYMBOLS[self.symbol_index]}'
         self.console_output.config(text=loading_animation, fg=INFORMATION_COLOR)
         self.console_output.after(50, lambda: self.update_loading_animation(loading_text))
+
+    def run_generated_project(self):
+        """
+        Run the generated project.
+        """
+        logging.debug('Running generated project')
+        if messagebox.askyesno('Run project', 'Do you want to build and run the generated project?'):
+            self.busy = True
+            self.open_button.config(state=tk.DISABLED)
+            self.generate_button.config(state=tk.DISABLED)
+            run_generated_project = RunGeneratedProject(self.project_path, self.build_tool)
+            response = run_generated_project.run_generated_project()
+            if response.status is cfg.ERROR:
+                error_message = f'{cfg.CONSOLE_LOG_LEVEL_TAGS["ERROR"]} {utils.add_punctuation(response.message)}'
+                self.console_output.config(text=error_message, fg=ERROR_COLOR)
+            self.busy = False
+            self.open_button.config(state=tk.NORMAL)
+            self.generate_button.config(state=tk.NORMAL)
 
     def get_text_editor_content(self):
         """
@@ -924,7 +1012,7 @@ class HelpWindowGUI(tk.Toplevel):
         """
         logging.info('Creating HelpWindowGUI instance')
         self.parent = parent
-        self.help_text = self.read_help_file()
+        self.soap_response = self.parse_html_content()
         self.init_window()
 
     def init_window(self):
@@ -954,7 +1042,7 @@ class HelpWindowGUI(tk.Toplevel):
         """
         Initialize the help scrolled text widget.
         """
-        self.help_scrolled_text = scrolledtext.ScrolledText(self.help_window, wrap=tk.WORD, font=self.help_window_font, background=INITIAL_BACKGROUND_COLOR)
+        self.help_scrolled_text = scrolledtext.ScrolledText(self.help_window, wrap=tk.WORD, width=80, font=self.help_window_font, background=INITIAL_BACKGROUND_COLOR)
         self.help_scrolled_text.pack(padx=10, pady=10)
         logging.info('Scrolled text widget initialized')
 
@@ -976,13 +1064,51 @@ class HelpWindowGUI(tk.Toplevel):
         logging.info(f'Reading "{cfg.HELP_FILE}" file')
         return utils.read_file(utils.get_path(cfg.RESOURCES_FOLDER, cfg.HELP_FILE))
     
+    def parse_html_content(self):
+        """
+        Parses the HTML content of the help file and returns it as a BeautifulSoup object.
+        """
+        logging.info('Parsing HTML content')
+        help_text_content = self.read_help_file()
+        return utils.parse_html_content(help_text_content)
+    
     def update_help_scrolled_text_widget(self):
         """
         Updates the help scrolled text widget with the content of the help file.
         """
-        self.help_scrolled_text.insert('1.0', self.help_text)
+        logging.info('Updating help scrolled text widget')
+        self.help_scrolled_text.config(state=tk.NORMAL)
+        self.help_scrolled_text.delete('1.0', tk.END)
+        self.add_style_to_help_text()
         self.help_scrolled_text.config(state=tk.DISABLED)
-        logging.info(f'Content of "{cfg.HELP_FILE}" file loaded into scrolled text widget')
+        logging.info(f'Content of HTML file loaded into scrolled text widget')
+
+    def add_style_to_help_text(self):
+        """
+        Adds style to the help text widget.
+        """
+        logging.info('Adding style to help text widget')
+        h1_font = utils.set_font(self.help_window_font, 18, True)
+        h2_font = utils.set_font(self.help_window_font, 14, True)
+        h3_font = utils.set_font(self.help_window_font, 11, True)
+        code_font = utils.set_font(cfg.CODE_FONT, 9, True)
+        
+        for tag in self.soap_response.recursiveChildGenerator():
+            if isinstance(tag, str):
+                continue
+            if tag.name == 'nl':
+                self.help_scrolled_text.insert('end', '\n', tag.name)
+            else:
+                self.help_scrolled_text.insert('end', tag.text, tag.name)
+
+        self.help_scrolled_text.tag_configure('h1', font=h1_font, foreground=INFORMATION_COLOR, spacing1=5, justify=tk.CENTER, underline=True)
+        self.help_scrolled_text.tag_configure('h2', font=h2_font, foreground=INFORMATION_COLOR, spacing1=10, spacing3=10, justify=tk.LEFT, underline=True)
+        self.help_scrolled_text.tag_configure('h3', font=h3_font, spacing1=5, spacing3=5, justify=tk.LEFT)
+        self.help_scrolled_text.tag_configure('div', font=self.help_window_font, spacing1=5, justify=tk.LEFT)
+        self.help_scrolled_text.tag_configure('list', font=self.help_window_font, spacing1=5, justify=tk.LEFT)
+        self.help_scrolled_text.tag_configure('nl', font=self.help_window_font, spacing1=5, justify=tk.LEFT)
+        self.help_scrolled_text.tag_configure('code', font=code_font, spacing1=5, justify=tk.LEFT)
+        self.help_scrolled_text.tag_configure('default', font=self.help_window_font, spacing1=5, justify=tk.LEFT)
 
 
 class SaveWindowGUI(tk.Toplevel):

@@ -1,0 +1,238 @@
+Database {
+    DB driver: postgresql,    // use postgresql for testing
+    DB name: jsd_mbrs,
+    DB username: postgres,
+    DB password: rootPassword1
+}
+
+public class User {
+    // parameters
+    userId: id (get);    // this is a comment
+    username: string (get, set);
+    password: string (get, set);
+    email: string (get, set);
+    address: string (get, set);
+    
+    // constants
+    default_role: constant string = "ROLE_USER";
+    default_address: const string = "Not Provided";
+    max_failed_logging_attempts: const int = 5;
+    
+    // entity relationships
+    roles: Role hashset *..*(+) (get, set);
+    orders: Order array 1..*;
+    products: Product hashset *..*(+) (get, set);
+    reviews: Review array 1..*;
+
+    Constructors {
+        default,
+        empty,
+        [username, password, email],
+        [username]
+    }
+
+    Methods {
+        public void addRole(Role),
+        public void removeRole(Role),
+        public boolean hasEmailAddress(email),
+        public boolean updateEmailAddress(email),
+        public User getUserDetails(),
+        public list(Order) getOderHistory()
+    }
+
+    toString: yes
+}
+
+public class Product {
+    // parameters
+    productId: id (getter);
+    productName: string (get, set);
+    description: string (get, set);
+    price: Double (get, set);
+    stock: int (get, set);
+
+    // constants
+    default_category: const String = "Uncategorized";
+    max_discount: const Double = 0.5D; // 50% discount
+    default_stock: const int = 0;
+
+    // entity relationships
+    category: Category *..1(+) (get, set);
+    wishlistedBy: User hashset *..*;
+    reviews: Review array 1..*;
+    orderDetails: Order hashset *..*;
+
+    Constructors {
+        default,
+	empty,
+        [productName, price, stock],
+        [productName]
+    }
+
+    Methods {
+        public void addReview(Review),
+        public void removeReview(Review),
+        public void updateStock(stock),
+        public double applyDiscount(),
+        public boolean isAvailableInStock()
+    }
+
+    toString: yes
+}
+
+public class Order {
+    // parameters
+    orderDetailId: id (getter);
+    orderDate: datetime (get, set);
+    status: String (get, set);
+    totalAmount: double (get, set);
+
+    // constants
+    static_pending: const String = "PENDING";
+    static_completed: const String = "COMPLETED";
+    static_canceled: const String = "CANCELED";
+    default_order_status: const String = "PENDING";
+    min_order_amount: const double = 10.0D;
+
+    // entity relationships
+    user: User *..1(+) (get, set);
+    products: Product hashset *..*(+) (get, set);
+    payment: Payment 1..1;
+
+    Constructors {
+        empty,
+        default,
+        [orderDate, status, totalAmount, payment]
+    }
+
+    Methods {
+        public void addProduct(Product),
+        public void removeProduct(Product),
+        public void calculateTotalAmount(),
+        public boolean isOrderComplete(),
+        public array(Product) getProductsOrdered()
+    }
+
+    toString: yes
+}
+
+public class Payment {
+    // parameters
+    paymentId: id (getter);
+    paymentDate: datetime (get, set);
+    amount: double (get, set);
+    method: String (get, set);
+
+    // constants
+    max_payment_ammount: const float = 10000.F;
+    default_payment_method: const string = "Credit Card";
+    method_credit_card: const string = "Credit Card";
+    method_paypal: const string = "PayPal";
+    method_bank_transfer: const string = "Bank Transfer";
+    
+    // entity relationships
+    order: Order 1..1(+) (get, set);
+
+    Constructors {
+        empty,
+        default,
+        [paymentDate, amount, method]
+    }
+
+    Methods {
+        public void processPayment(),
+        public boolean validatePaymentDetails(),
+        public String getPaymentSummary(),
+        public boolean isPaymentSuccessful()
+    }
+
+    toString: yes
+}
+
+public class Review {
+    // parameters
+    reviewId: id (getter);
+    rating: Integer (get, set);
+    comment: string (get, set);
+
+    // constants
+    max_rating: const int = 5;
+    min_rating: const int = 1;
+    default_comment: const string = "NoComments";
+
+    // entity relationships
+    user: User *..1(+) (get, set);
+    product: Product *..1(+) (get, set);
+
+    Constructors {
+        empty,
+        default,
+        [rating, comment, product],
+        [product]
+    }
+
+    Methods {
+        public boolean isValidRating(),
+        public boolean hasComment(),
+        public String getReviewDetails()
+    }
+
+    toString: yes
+}
+
+public class Category {
+    // parameters
+    categoryId: id (getter);
+    categoryName: string (get, set);
+    categoryDescription: string (get, set);
+
+    // constants
+    default_description: const string = "No description available";
+    default_name: const string = "Uncategorized";    
+
+    // entity relationships
+    products: Product linked 1..*;
+
+    Constructors {
+        empty,
+        default,
+        [categoryName, categoryDescription],
+        [categoryName]
+    }
+
+    Methods {
+        public void addProduct(Product),
+        public void removeProduct(Product),
+        public linked(Product) getProductsInCategory()
+    }
+
+    toString: yes
+}
+
+public class Role {
+    // parameters
+    roleId: id (get);
+    name: string (get, set);
+
+    // constants
+    role_admin: const String = "ROLE_ADMIN";
+    role_user: const String = "ROLE_USER";
+    defualt_role_name: const string = "REGULAR_USER";
+
+    // entity relationships
+    users: User hashset *..*;
+
+    Constructors {
+        empty,
+        default,
+        [name]
+    }
+
+    Methods {
+        public void addUser(User),
+        public void removeUser(User),
+        public array(User) getUsersWithRole()
+    }
+
+    toString: yes
+}
